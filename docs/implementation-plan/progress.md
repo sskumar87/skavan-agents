@@ -10,6 +10,7 @@ This is the current execution ledger. It is updated when a component has been ve
 | Database roles | `skavan_app` is a restricted runtime login; `skavan_migrator` owns the product database and is used only for schema migration. |
 | pgvector baseline | `vector` 0.8.1 enabled; `vector(1536)` group-memory column and cosine HNSW index validated. |
 | Alembic baseline | Revision `20260821_0001` applied forward-only to `skavan` after a disposable-database validation run. |
+| Backup and restore rehearsal | A custom-format backup of the empty baseline database was restored into an isolated disposable database; revision `20260821_0001` was verified, then the disposable databases were removed. |
 | PostgreSQL network binding | Docker port 5432 is bound to Laptop 1 private address only, preserving Laptop 2 access. |
 | Infrastructure source | Laptop 2 Compose, private ingress and Cloudflare Tunnel templates are committed; public Hermes/PostgreSQL routes are absent. |
 
@@ -18,7 +19,7 @@ This is the current execution ledger. It is updated when a component has been ve
 | Component | Next action |
 | --- | --- |
 | Laptop 1 network hardening | Confirm approved Redis/Redis Insight consumers before changing their all-interface bindings. |
-| Backups and recovery | Choose encrypted off-host destination, recovery-key custody, schedule and recovery objectives; then implement a systemd backup/restore test. |
+| Backups and recovery | Choose encrypted off-host destination, recovery-key custody, schedule and recovery objectives; then implement an automated backup job and periodic restore test. |
 | Laptop 2 deployment | Select and pin ZITADEL, Hermes, Nginx and cloudflared releases/images; complete their vendor-specific configuration. |
 | Identity ingress | Choose app/auth hostnames and implement verified ZITADEL public OIDC routing while keeping administration private. |
 

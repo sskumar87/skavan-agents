@@ -40,7 +40,7 @@ Assign an owner and rotation date to every secret. Only API receives the Hermes 
 1. Patch the OS; enable time sync, encrypted storage and restricted administration.
 2. Install Docker Engine + Compose and run PostgreSQL + pgvector as a dedicated container with durable encrypted host storage. Create separate product/ZITADEL databases and non-superuser roles.
 3. Bind the database container only to Laptop 1's private interface; permit only Laptop 2's private address, require TLS and never expose/forward port 5432.
-4. Create a migration role permitted to install `vector`, plus a restricted API runtime role.
+4. Use the database superuser to enable `vector` once per target database. Create a separate migration role for schema changes and a restricted API runtime role; do not give the runtime role extension or schema-creation privileges.
 5. Test authenticated TLS connections from Laptop 2.
 6. Configure encrypted backups plus WAL/PITR to a location outside Laptop 1. Prove a restore before accepting production data.
 
