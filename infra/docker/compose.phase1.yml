@@ -57,7 +57,12 @@ services:
       API_SERVER_KEY: ${HERMES_API_SERVER_KEY:?Run configure-phase1.ps1 first}
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?Run configure-phase1.ps1 first}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      HERMES_DASHBOARD: "0"
+      HERMES_DASHBOARD: "1"
+      HERMES_DASHBOARD_BASIC_AUTH_USERNAME: ${HERMES_DASHBOARD_BASIC_AUTH_USERNAME:?Run configure-phase1.ps1 first}
+      HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: ${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD:?Run configure-phase1.ps1 first}
+      HERMES_DASHBOARD_BASIC_AUTH_SECRET: ${HERMES_DASHBOARD_BASIC_AUTH_SECRET:?Run configure-phase1.ps1 first}
+    ports:
+      - "127.0.0.1:9119:9119"
     volumes:
       - ${HERMES_DATA_DIR:-C:/SKAV_PLATFORM/secrets/skavan-phase1}:/opt/data
     healthcheck:
