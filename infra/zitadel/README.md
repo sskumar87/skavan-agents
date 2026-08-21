@@ -13,20 +13,24 @@ application while testing OIDC so its callback and cookies use one hostname.
 
 Before starting the `identity` profile:
 
-1. Create a dedicated `zitadel` database and owner on Laptop 1.
-2. Put its DSN, a strong initial administrator password, and the path to a
-   protected 32-character master-key file in the external phase-one `.env`.
-3. Start `docker compose --env-file <protected-env> -f
+1. Run `infra/zitadel/configure-phase1-login.ps1`. It prompts for the new
+   database-role password and initial administrator password, generates all
+   other keys, updates the protected external `.env`, and writes
+   `zitadel-create.sql` beside it without displaying secrets.
+2. Run that generated SQL once through the existing IntelliJ administrative
+   connection to create the dedicated `zitadel` database and owner on Laptop 1.
+3. Keep the generated `.env`, master key, and SQL file outside the repository;
+   back up the master key because it cannot be changed after initialization.
+4. Start `docker compose --env-file <protected-env> -f
    infra/docker/compose.phase1.yml --profile identity up -d --wait`.
-4. Open `http://auth.localhost:8081/ui/console` and create a project plus a Web
+5. Open `http://auth.localhost:8081/ui/console` and create a project plus a Web
    OIDC application using Authorization Code + PKCE and development mode.
-5. Register redirect URI
+6. Register redirect URI
    `http://localhost:8080/auth/callback/zitadel`. Register post-logout URI
    `http://localhost:8080/login`.
-6. Put the generated client ID in `ZITADEL_CLIENT_ID`. Set
-   `ZITADEL_ISSUER_URL=http://auth.localhost:8081`, generate independent random
-   values for `AUTH_SECRET` and `ZITADEL_CLIENT_SECRET`, then rebuild the web
-   service.
+7. Put the generated client ID in `ZITADEL_CLIENT_ID` in the protected `.env`,
+   then rebuild the web service. The setup script has already generated the
+   remaining local authentication values.
 
 The local HTTP configuration is strictly a Laptop 2 bootstrap mode. Cloudflare
 deployment uses a final `https://auth.<domain>` issuer and exact HTTPS callback
