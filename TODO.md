@@ -10,7 +10,7 @@
 - [ ] Optionally configure Anthropic as the fallback provider
 - [x] Start Hermes, API and web on Laptop 2
 - [x] Send one real UI message through FastAPI to Hermes
-- [ ] Replace the non-streaming response with SSE streaming
+- [x] Replace the non-streaming response with SSE streaming
 
 ## Important, deferred until the chat slice works
 

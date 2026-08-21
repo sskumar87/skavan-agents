@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
+from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx2
@@ -62,5 +64,52 @@ class HermesAdapter:
             raise HermesError("Hermes timed out while processing the message.") from exc
         except httpx2.HTTPStatusError as exc:
             raise HermesError("Hermes rejected the request.") from exc
+        except (httpx2.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
+            raise HermesError("Hermes is currently unavailable.") from exc
+
+    async def stream(self, messages: list[dict[str, str]]) -> AsyncIterator[str]:
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "stream": True,
+        }
+        received_content = False
+        event_name: str | None = None
+        try:
+            async with httpx2.AsyncClient(timeout=300.0) as client:
+                async with client.stream(
+                    "POST",
+                    f"{self.base_url}/v1/chat/completions",
+                    headers=self.headers,
+                    json=payload,
+                ) as response:
+                    response.raise_for_status()
+                    async for line in response.aiter_lines():
+                        if line.startswith("event:"):
+                            event_name = line[6:].strip()
+                            continue
+                        if not line:
+                            event_name = None
+                            continue
+                        if not line.startswith("data:"):
+                            continue
+                        data = line[5:].strip()
+                        if data == "[DONE]":
+                            break
+                        if event_name:
+                            continue
+                        chunk: Any = json.loads(data)
+                        content = chunk["choices"][0]["delta"].get("content")
+                        if isinstance(content, str) and content:
+                            received_content = True
+                            yield content
+            if not received_content:
+                raise HermesError("Hermes returned an empty response.")
+        except httpx2.TimeoutException as exc:
+            raise HermesError("Hermes timed out while processing the message.") from exc
+        except httpx2.HTTPStatusError as exc:
+            raise HermesError("Hermes rejected the request.") from exc
+        except HermesError:
+            raise
         except (httpx2.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
             raise HermesError("Hermes is currently unavailable.") from exc

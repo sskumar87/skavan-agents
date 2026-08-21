@@ -1,6 +1,9 @@
+import json
+from collections.abc import AsyncIterator
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.hermes import HermesAdapter, HermesError
@@ -51,3 +54,32 @@ async def chat(
     except HermesError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     return ChatResponse(message=ChatMessage(role="assistant", content=content))
+
+
+def format_sse(event: str, data: dict[str, str]) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, separators=(',', ':'))}\n\n"
+
+
+@app.post("/api/chat/stream", tags=["chat"])
+async def stream_chat(
+    request: ChatRequest,
+    hermes: HermesAdapter = Depends(get_hermes_adapter),
+) -> StreamingResponse:
+    messages = [message.model_dump() for message in request.messages]
+
+    async def events() -> AsyncIterator[str]:
+        try:
+            async for content in hermes.stream(messages):
+                yield format_sse("token", {"content": content})
+            yield format_sse("done", {})
+        except HermesError as exc:
+            yield format_sse("error", {"message": str(exc)})
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",
+        },
+    )

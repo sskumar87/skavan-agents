@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 
 type ChatMessage = { id: string; role: "user" | "assistant"; content: string };
+type StreamEvent = { event: string; data: Record<string, unknown> };
 
 const initialMessages: ChatMessage[] = [{
   id: "welcome",
@@ -10,25 +11,25 @@ const initialMessages: ChatMessage[] = [{
   content: "Hermes link ready. What are we building?",
 }];
 
-function responseText(payload: unknown): string {
-  if (typeof payload === "string") return payload;
-  if (!payload || typeof payload !== "object") return "Hermes returned an empty response.";
-
-  const body = payload as Record<string, unknown>;
-  if (body.message && typeof body.message === "object") {
-    const message = body.message as Record<string, unknown>;
-    if (typeof message.content === "string") return message.content;
+function parseStreamEvent(block: string): StreamEvent | null {
+  let event = "message";
+  const data: string[] = [];
+  for (const line of block.split("\n")) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    if (line.startsWith("data:")) data.push(line.slice(5).trim());
   }
-  for (const key of ["reply", "message", "content", "response"]) {
-    if (typeof body[key] === "string") return body[key];
-  }
-  return "Hermes returned an unsupported response shape.";
+  if (!data.length) return null;
+  const payload: unknown = JSON.parse(data.join("\n"));
+  return payload && typeof payload === "object"
+    ? { event, data: payload as Record<string, unknown> }
+    : null;
 }
 
 export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [prompt, setPrompt] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isReceiving, setIsReceiving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hermesStatus, setHermesStatus] = useState<"checking" | "online" | "offline">("checking");
 
@@ -47,12 +48,13 @@ export default function Home() {
     setPrompt("");
     setError(null);
     setIsSending(true);
+    setIsReceiving(false);
     const userMessage: ChatMessage = { id: crypto.randomUUID(), role: "user", content: message };
     const conversation = [...messages, userMessage];
     setMessages(conversation);
 
     try {
-      const response = await fetch("/api/chat", {
+      const response = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -61,20 +63,48 @@ export default function Home() {
             .map(({ role, content }) => ({ role, content })),
         }),
       });
-      if (!response.ok) throw new Error(`Hermes request failed (${response.status})`);
+      if (!response.ok || !response.body) throw new Error(`Hermes request failed (${response.status})`);
 
-      const contentType = response.headers.get("content-type") ?? "";
-      const payload: unknown = contentType.includes("application/json")
-        ? await response.json()
-        : await response.text();
-      setMessages((current) => [
-        ...current,
-        { id: crypto.randomUUID(), role: "assistant", content: responseText(payload) },
-      ]);
+      const assistantId = crypto.randomUUID();
+      let assistantAdded = false;
+      let buffer = "";
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      const handleBlock = (block: string) => {
+        const item = parseStreamEvent(block);
+        if (!item) return;
+        if (item.event === "error") {
+          throw new Error(typeof item.data.message === "string" ? item.data.message : "Hermes stream failed.");
+        }
+        if (item.event !== "token" || typeof item.data.content !== "string") return;
+        const token = item.data.content;
+        if (!assistantAdded) {
+          assistantAdded = true;
+          setIsReceiving(true);
+          setMessages((current) => [...current, { id: assistantId, role: "assistant", content: token }]);
+        } else {
+          setMessages((current) => current.map((item) => item.id === assistantId
+            ? { ...item, content: item.content + token }
+            : item));
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        buffer = (buffer + decoder.decode(value, { stream: !done })).replaceAll("\r\n", "\n");
+        const blocks = buffer.split("\n\n");
+        buffer = blocks.pop() ?? "";
+        blocks.forEach(handleBlock);
+        if (done) break;
+      }
+      if (buffer.trim()) handleBlock(buffer);
+      if (!assistantAdded) throw new Error("Hermes returned an empty response.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to reach Hermes.");
     } finally {
       setIsSending(false);
+      setIsReceiving(false);
     }
   }
 
@@ -98,7 +128,7 @@ export default function Home() {
               <p>{message.content}</p>
             </article>
           ))}
-          {isSending && (
+          {isSending && !isReceiving && (
             <article className="message assistant pending">
               <div className="messageMeta">HERMES</div><p>Processing<span className="pulse">...</span></p>
             </article>
