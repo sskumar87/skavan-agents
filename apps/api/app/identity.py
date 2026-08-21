@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -12,6 +13,11 @@ from sqlalchemy import DateTime, String, column, delete, select, table, update
 from sqlalchemy.dialects.postgresql import JSONB, UUID, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+
+logger = logging.getLogger(__name__)
+ALLOWED_ID_TOKEN_ALGORITHMS = {
+    "RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "EdDSA"
+}
 
 users = table(
     "users",
@@ -53,15 +59,22 @@ class OidcTokenVerifier:
 
     async def verify(self, token: str) -> VerifiedIdentity:
         try:
+            algorithm = jwt.get_unverified_header(token).get("alg")
+            if algorithm not in ALLOWED_ID_TOKEN_ALGORITHMS:
+                raise jwt.InvalidAlgorithmError("Unsupported ID token algorithm")
             signing_key = await asyncio.to_thread(self.jwks.get_signing_key_from_jwt, token)
             claims = jwt.decode(
                 token,
                 signing_key.key,
-                algorithms=["RS256"],
+                algorithms=[algorithm],
                 audience=self.client_id,
                 issuer=self.issuer,
+                leeway=30,
             )
         except jwt.PyJWTError as exc:
+            logger.warning(
+                "OIDC ID token rejected (%s): %s", type(exc).__name__, exc
+            )
             raise HTTPException(status_code=401, detail="Invalid identity token") from exc
 
         subject = claims.get("sub")

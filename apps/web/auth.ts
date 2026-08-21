@@ -18,7 +18,11 @@ async function synchronizePlatformUser(idToken: string): Promise<PlatformUser> {
       cache: "no-store",
     },
   );
-  if (!response.ok) throw new Error("Unable to synchronize the platform user");
+  if (!response.ok) {
+    const detail = await response.text();
+    console.error("Platform user synchronization failed", response.status, detail);
+    throw new Error("Unable to synchronize the platform user");
+  }
   return response.json() as Promise<PlatformUser>;
 }
 
