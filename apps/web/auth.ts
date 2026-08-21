@@ -4,6 +4,14 @@ import Zitadel from "next-auth/providers/zitadel";
 const issuer = process.env.ZITADEL_ISSUER_URL ?? "https://zitadel.invalid";
 const clientId = process.env.ZITADEL_CLIENT_ID ?? "zitadel-client-not-configured";
 
+export function buildFederatedLogoutUrl() {
+  const appOrigin = process.env.APP_ORIGIN ?? process.env.AUTH_URL ?? "http://localhost:8080";
+  const logoutUrl = new URL("/oidc/v1/end_session", issuer);
+  logoutUrl.searchParams.set("client_id", clientId);
+  logoutUrl.searchParams.set("post_logout_redirect_uri", new URL("/login", appOrigin).toString());
+  return logoutUrl.toString();
+}
+
 export function isAuthConfigured() {
   return Boolean(
     process.env.AUTH_SECRET

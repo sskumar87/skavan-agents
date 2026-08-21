@@ -3,8 +3,8 @@ param(
     [string]$SecretDirectory = "C:\SKAV_PLATFORM\secrets\skavan-phase1",
     [string]$DatabaseHost = "192.168.1.49",
     [int]$DatabasePort = 5432,
-    [string]$AppOrigin = "http://localhost:8080",
-    [string]$ZitadelIssuerUrl = "http://auth.localhost:8081"
+    [string]$AppOrigin = "https://skavan.skavapp.com",
+    [string]$ZitadelIssuerUrl = "https://auth.skavapp.com"
 )
 
 $ErrorActionPreference = "Stop"

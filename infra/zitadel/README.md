@@ -14,7 +14,10 @@ hostnames before restarting the identity profile.
 
 Before starting the `identity` profile:
 
-1. Run `infra/zitadel/configure-phase1-login.ps1`. It prompts for the new
+1. Run `infra/zitadel/configure-phase1-login.ps1`. Its defaults are the public
+   Phase 1 hosts `https://skavan.skavapp.com` and
+   `https://auth.skavapp.com`; pass `-AppOrigin` and `-ZitadelIssuerUrl`
+   explicitly only when preparing a different deployment. It prompts for the new
    database-role password and initial administrator password, generates all
    other keys, updates the protected external `.env`, and writes
    `zitadel-create.sql` beside it without displaying secrets.
@@ -43,6 +46,11 @@ URLs; do not enable ZITADEL development mode there. Set `APP_ORIGIN`,
 `ZITADEL_DOMAIN`, `ZITADEL_ISSUER_URL`, `ZITADEL_EXTERNAL_PORT`,
 `ZITADEL_EXTERNAL_SECURE`, and `ZITADEL_EXTERNAL_SCHEME` in the protected
 environment file before recreating the web and identity services.
+The setup script updates deployment files only. ZITADEL applies
+`FIRSTINSTANCE` and `DEFAULTINSTANCE` values when an instance is first created;
+for an existing instance, update **Default Settings > Features > Login V2** in
+the Console (or use the Feature API) and set its base URI to the final public
+issuer plus `/ui/v2/login`.
 
 The Laptop 2 Compose template follows ZITADEL v4.17.1's production-like
 lifecycle: `zitadel-init`, `zitadel-setup`, `zitadel-api`, `zitadel-login`, and
