@@ -18,6 +18,10 @@ Foundation only. The first vertical slice is signup and login through group/thre
 
 Read [the architecture overview](docs/architecture/overview.md) and [the implementation plan](docs/implementation-plan/README.md) before extending the platform.
 
+## Database foundation
+
+The product database is managed only through Alembic. See [database migration instructions](database/migrations/README.md) for the V1 schema, required pgvector extension, and safe local validation steps.
+
 ## Local development
 
 Prerequisites and service configuration are intentionally introduced with the first runnable vertical slice. Do not expose Hermes credentials or call Hermes from the browser.
