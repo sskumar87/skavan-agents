@@ -49,7 +49,7 @@ Assign an owner and rotation date to every secret. Only API receives the Hermes 
 1. Patch/harden the OS; enable time sync/encrypted storage; install Docker Engine + Compose from trusted sources.
 2. Obtain a tagged, reviewed release. Copy `infra/docker/compose.laptop2.example.yml` to ignored `compose.laptop2.yml` and `.env.example` to ignored `.env`.
 3. Supply verified deployment values only. Confirm the reverse proxy has no host-published port, no database container exists, and API alone gets the Hermes key.
-4. Pin image versions/digests after compatibility checks and record them in the release record.
+4. Start from the reviewed references in `image-inventory.md`. Re-resolve and review digests during an intentional upgrade, then record the deployed image IDs in the release record.
 
 ## 6. Identity and Hermes gates
 
