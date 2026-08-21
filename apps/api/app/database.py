@@ -14,7 +14,7 @@ engine: AsyncEngine | None = None
 session_factory: async_sessionmaker | None = None
 
 
-def _session_factory() -> async_sessionmaker:
+def get_session_factory() -> async_sessionmaker:
     global engine, session_factory
     if session_factory is None:
         engine = create_async_engine(_database_url(), pool_pre_ping=True)
@@ -23,5 +23,5 @@ def _session_factory() -> async_sessionmaker:
 
 
 async def get_database_session():
-    async with _session_factory()() as session:
+    async with get_session_factory()() as session:
         yield session

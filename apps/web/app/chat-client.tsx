@@ -27,6 +27,7 @@ function parseStreamEvent(block: string): StreamEvent | null {
 
 export function ChatClient({ account }: { account: ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [prompt, setPrompt] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isReceiving, setIsReceiving] = useState(false);
@@ -40,10 +41,25 @@ export function ChatClient({ account }: { account: ReactNode }) {
       .catch(() => setHermesStatus("offline"));
   }, []);
 
+  useEffect(() => {
+    fetch("/bff/chat/history", { cache: "no-store" })
+      .then(async (response) => {
+        if (response.status === 401) {
+          window.location.assign("/login");
+          return [];
+        }
+        if (!response.ok) throw new Error("Unable to load chat history");
+        return response.json() as Promise<ChatMessage[]>;
+      })
+      .then((history) => setMessages(history.length ? history : initialMessages))
+      .catch(() => setError("Chat history could not be loaded."))
+      .finally(() => setIsLoadingHistory(false));
+  }, []);
+
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const message = prompt.trim();
-    if (!message || isSending) return;
+    if (!message || isSending || isLoadingHistory) return;
 
     setPrompt("");
     setError(null);
@@ -58,9 +74,7 @@ export function ChatClient({ account }: { account: ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: conversation
-            .filter((item) => item.id !== "welcome")
-            .map(({ role, content }) => ({ role, content })),
+          messages: [{ role: "user", content: message }],
         }),
       });
       if (response.status === 401) {
@@ -158,9 +172,11 @@ export function ChatClient({ account }: { account: ReactNode }) {
               }}
               placeholder="Ask Hermes anything..."
               rows={1}
-              disabled={isSending}
+              disabled={isSending || isLoadingHistory}
             />
-            <button type="submit" disabled={!prompt.trim() || isSending}>{isSending ? "Sending" : "Send"}</button>
+            <button type="submit" disabled={!prompt.trim() || isSending || isLoadingHistory}>
+              {isLoadingHistory ? "Loading" : isSending ? "Sending" : "Send"}
+            </button>
           </form>
           <p className="hint">Enter to send · Shift + Enter for a new line</p>
         </div>

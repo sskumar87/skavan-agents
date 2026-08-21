@@ -4,7 +4,10 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   const session = await auth();
-  if (!session?.user?.id) {
+  const platformUserId = session?.user && "platformUserId" in session.user
+    ? String(session.user.platformUserId)
+    : "";
+  if (!platformUserId) {
     return Response.json({ detail: "Authentication required" }, { status: 401 });
   }
 
@@ -13,7 +16,7 @@ export async function POST(request: Request) {
       method: "POST",
       headers: {
         "Content-Type": request.headers.get("content-type") ?? "application/json",
-        "X-Skavan-User-Sub": session.user.id,
+        "X-Skavan-User-Id": platformUserId,
       },
       body: await request.text(),
       cache: "no-store",

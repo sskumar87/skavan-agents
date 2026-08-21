@@ -29,12 +29,13 @@ This is the current execution ledger. It is updated when a component has been ve
 | Backups and recovery | Enable user lingering for unattended timers, then choose encrypted off-host destination, recovery-key custody, disk/backup-failure alerting, retention and recovery objectives before production use. |
 | Laptop 2 deployment | Reviewed release tags and immutable multi-platform digests are recorded. Recreate the web/identity services with the protected environment and run the on-machine Compose validation. |
 | Product user synchronization | FastAPI verifies the ZITADEL ID token and idempotently links immutable issuer/subject identities to canonical product users. Rebuild the API/web containers and complete one live login/database check. |
+| Personal conversation persistence | Default private workspace/thread, ordered PostgreSQL message storage, authoritative history loading, and Hermes context replay are implemented. Rebuild API/web and verify refresh continuity. |
 
 ## Not started
 
 | Component | Dependency |
 | --- | --- |
-| Groups, threads and Hermes streaming | API foundation and verified Hermes API contract |
+| Collaborative groups and thread management UI | Verified personal conversation persistence and membership authorization endpoints |
 | Shared group memory application flow | API authorization layer; database storage is ready |
 | Normal-user UI | Stable identity/API contracts; use the documented responsive theme system |
 

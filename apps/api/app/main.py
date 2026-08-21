@@ -2,13 +2,15 @@ import json
 from collections.abc import AsyncIterator
 from functools import lru_cache
 from typing import Literal
+from uuid import UUID
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_database_session
+from app.conversations import append_message, ensure_personal_thread, load_messages
+from app.database import get_database_session, get_session_factory
 from app.hermes import HermesAdapter, HermesError
 from app.identity import OidcTokenVerifier, synchronize_user
 
@@ -60,6 +62,37 @@ class ChatResponse(BaseModel):
     message: ChatMessage
 
 
+class StoredChatMessage(ChatMessage):
+    id: str
+    created_at: str
+
+
+def require_platform_user_id(value: str | None) -> UUID:
+    if not value:
+        raise HTTPException(status_code=401, detail="Authenticated platform user required")
+    try:
+        return UUID(value)
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail="Invalid platform user") from exc
+
+
+@app.get("/api/chat/history", response_model=list[StoredChatMessage], tags=["chat"])
+async def chat_history(
+    x_skavan_user_id: str | None = Header(default=None),
+) -> list[StoredChatMessage]:
+    user_id = require_platform_user_id(x_skavan_user_id)
+    async with get_session_factory()() as session:
+        thread_id = await ensure_personal_thread(session, user_id)
+        stored = await load_messages(session, thread_id)
+    return [
+        StoredChatMessage(
+            id=item["id"], role=item["role"], content=item["content"],
+            created_at=item["created_at"].isoformat(),
+        )
+        for item in stored
+    ]
+
+
 def get_hermes_adapter() -> HermesAdapter:
     return HermesAdapter.from_environment()
 
@@ -92,14 +125,36 @@ def format_sse(event: str, data: dict[str, str]) -> str:
 @app.post("/api/chat/stream", tags=["chat"])
 async def stream_chat(
     request: ChatRequest,
+    x_skavan_user_id: str | None = Header(default=None),
     hermes: HermesAdapter = Depends(get_hermes_adapter),
 ) -> StreamingResponse:
-    messages = [message.model_dump() for message in request.messages]
+    user_id = require_platform_user_id(x_skavan_user_id)
+    latest = request.messages[-1]
+    if latest.role != "user":
+        raise HTTPException(status_code=400, detail="The latest message must be from the user")
+    async with get_session_factory()() as session:
+        thread_id = await ensure_personal_thread(session, user_id)
+        await append_message(
+            session, thread_id=thread_id, author_kind="USER",
+            author_user_id=user_id, content=latest.content,
+        )
+        stored = await load_messages(session, thread_id, limit=50)
+    hermes_messages = [
+        {"role": item["role"], "content": item["content"]} for item in stored
+    ]
 
     async def events() -> AsyncIterator[str]:
+        assistant_content: list[str] = []
         try:
-            async for content in hermes.stream(messages):
+            async for content in hermes.stream(hermes_messages):
+                assistant_content.append(content)
                 yield format_sse("token", {"content": content})
+            if assistant_content:
+                async with get_session_factory()() as session:
+                    await append_message(
+                        session, thread_id=thread_id, author_kind="AGENT",
+                        content="".join(assistant_content),
+                    )
             yield format_sse("done", {})
         except HermesError as exc:
             yield format_sse("error", {"message": str(exc)})
