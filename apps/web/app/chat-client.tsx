@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, ReactNode, useEffect, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 
 type ChatMessage = { id: string; role: "user" | "assistant"; content: string };
 type StreamEvent = { event: string; data: Record<string, unknown> };
@@ -43,6 +43,11 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
   const [hermesStatus, setHermesStatus] = useState<"checking" | "online" | "offline">("checking");
   const [theme, setTheme] = useState<ThemeName>("neon-grid");
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
+  const [isThreadDrawerOpen, setIsThreadDrawerOpen] = useState(false);
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+  const messagesRef = useRef<HTMLDivElement>(null);
+  const followBottomRef = useRef(true);
 
   useEffect(() => {
     fetch("/bff/hermes/health")
@@ -50,6 +55,45 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
       .then((payload: { status?: string }) => setHermesStatus(payload.status === "ok" ? "online" : "offline"))
       .catch(() => setHermesStatus("offline"));
   }, []);
+
+  function updateScrollControls() {
+    const element = messagesRef.current;
+    if (!element) return;
+    const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+    const isNearBottom = distanceFromBottom < 80;
+    followBottomRef.current = isNearBottom;
+    setCanScrollUp(element.scrollTop > 80);
+    setCanScrollDown(!isNearBottom);
+  }
+
+  function scrollMessages(position: "top" | "bottom") {
+    const element = messagesRef.current;
+    if (!element) return;
+    const toBottom = position === "bottom";
+    followBottomRef.current = toBottom;
+    element.scrollTo({ top: toBottom ? element.scrollHeight : 0, behavior: "smooth" });
+  }
+
+  useEffect(() => {
+    if (isLoadingHistory) return;
+    followBottomRef.current = true;
+    requestAnimationFrame(() => {
+      const element = messagesRef.current;
+      if (!element) return;
+      element.scrollTop = element.scrollHeight;
+      updateScrollControls();
+    });
+  }, [isLoadingHistory]);
+
+  useEffect(() => {
+    if (!followBottomRef.current) return;
+    requestAnimationFrame(() => {
+      const element = messagesRef.current;
+      if (!element) return;
+      element.scrollTop = element.scrollHeight;
+      updateScrollControls();
+    });
+  }, [messages, isSending]);
 
   useEffect(() => {
     fetch("/bff/users/me", { cache: "no-store" })
@@ -111,6 +155,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     setError(null);
     setIsSending(true);
     setIsReceiving(false);
+    followBottomRef.current = true;
     const userMessage: ChatMessage = { id: crypto.randomUUID(), role: "user", content: message };
     const conversation = [...messages, userMessage];
     setMessages(conversation);
@@ -189,7 +234,13 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
       </aside>
 
       <header className="workspaceTopbar">
-        <button className="backButton" type="button" aria-label="Back">‹</button>
+        <button
+          className="backButton"
+          type="button"
+          aria-label="Open threads"
+          aria-expanded={isThreadDrawerOpen}
+          onClick={() => setIsThreadDrawerOpen(true)}
+        >‹</button>
         <div className="workspaceSearch" aria-label="Search is coming in the groups slice">
           <NavIcon kind="search" /><span>Search across your groups...</span><kbd>⌘ K</kbd>
         </div>
@@ -243,7 +294,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
             <span className="statusDot" aria-hidden="true" />Hermes {hermesStatus}
           </div>
         </header>
-        <div className="messages" aria-live="polite">
+        <div className="messages" aria-live="polite" ref={messagesRef} onScroll={updateScrollControls}>
           <div className="dayDivider"><span>Today</span></div>
           {messages.map((message) => (
             <article className={`message ${message.role}`} key={message.id}>
@@ -260,6 +311,10 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
               <div className="messageBody"><div className="messageMeta">Hermes · Agent</div><p>Processing<span className="pulse">...</span></p></div>
             </article>
           )}
+        </div>
+        <div className="scrollControls" aria-label="Conversation scroll controls">
+          {canScrollUp && <button type="button" onClick={() => scrollMessages("top")} aria-label="Scroll to first message">↑</button>}
+          {canScrollDown && <button type="button" onClick={() => scrollMessages("bottom")} aria-label="Scroll to latest message">↓</button>}
         </div>
         <div className="composerArea">
           {error && <p className="error" role="alert">{error}</p>}
@@ -308,6 +363,22 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           <p>✓ Answer questions</p><p>✓ Conversation history</p><p>✓ Theme preference</p>
         </section>
       </aside>
+
+      {isThreadDrawerOpen && (
+        <>
+          <div className="threadDrawerBackdrop open" onClick={() => setIsThreadDrawerOpen(false)} />
+          <aside className="threadDrawer open" aria-label="Thread navigation">
+            <div className="threadDrawerHeader">
+              <div><strong>Personal</strong><span>Private workspace</span></div>
+              <button type="button" onClick={() => setIsThreadDrawerOpen(false)} aria-label="Close threads">×</button>
+            </div>
+            <button className="threadItem active" type="button" onClick={() => setIsThreadDrawerOpen(false)}>
+              <span className="threadGlyph">◇</span>
+              <span><strong>General</strong><small>Your private Hermes thread</small></span>
+            </button>
+          </aside>
+        </>
+      )}
 
       <nav className="mobileNavigation" aria-label="Mobile navigation">
         <button type="button" className="active" aria-current="page"><NavIcon kind="user" /><span>Home</span></button>
