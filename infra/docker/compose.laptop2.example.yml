@@ -2,17 +2,28 @@ name: skavan-platform
 
 # Laptop 2 service topology template.
 # Copy to compose.laptop2.yml and supply values through a local .env file.
-# This template is intentionally not a production-ready deployment manifest.
+# Deployment values, image tags and immutable digests belong in the ignored
+# local .env. The example remains safe to commit because it contains no secrets.
 
 services:
   reverse-proxy:
-    image: nginx:1.27-alpine
+    image: ${NGINX_IMAGE:?Set a reviewed, pinned NGINX_IMAGE locally}
     restart: unless-stopped
     volumes:
       - ../reverse-proxy/nginx.conf.example:/etc/nginx/nginx.conf:ro
     networks:
       - edge
       - app
+    depends_on:
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   cloudflared:
     # Set a reviewed, pinned image in the ignored deployment environment file.
@@ -30,6 +41,8 @@ services:
   web:
     build:
       context: ../../apps/web
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:?Set a reviewed, pinned NODE_IMAGE locally}
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -37,10 +50,18 @@ services:
       NEXT_PUBLIC_APP_ORIGIN: ${APP_ORIGIN}
     networks:
       - app
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
 
   api:
     build:
       context: ../../apps/api
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE:?Set a reviewed, pinned PYTHON_IMAGE locally}
     restart: unless-stopped
     env_file:
       - ../../.env
@@ -51,11 +72,15 @@ services:
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
       HERMES_API_BASE_URL: ${HERMES_API_BASE_URL}
       HERMES_API_SERVER_KEY: ${HERMES_API_SERVER_KEY}
-    depends_on:
-      - web
     networks:
       - app
       - private-services
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
 
   # ZITADEL deployment shape, not a ready-to-run configuration. Its database is
   # also hosted privately on Laptop 1. Pin the chosen supported image version
@@ -85,17 +110,31 @@ services:
     image: ${HERMES_IMAGE:?Set a verified, pinned Hermes image locally}
     profiles: ["hermes"]
     restart: unless-stopped
+    command: gateway run
     env_file:
       - ../../.env
+    environment:
+      API_SERVER_ENABLED: "true"
+      API_SERVER_HOST: 0.0.0.0
+      API_SERVER_KEY: ${HERMES_API_SERVER_KEY}
+      HERMES_DASHBOARD: "0"
+    volumes:
+      - hermes-data:/opt/data
     networks:
       - private-services
+      - service-egress
 
 networks:
-  # Sole ingress path: Cloudflare Tunnel -> reverse proxy. Cloudflared is the
-  # only service on this network with outbound Internet access.
+  # Sole ingress path: Cloudflare Tunnel -> reverse proxy.
   edge: {}
   # Reverse proxy, web, API and ZITADEL's browser-facing OIDC endpoints.
   app: {}
   # API-to-Hermes, API-to-Laptop-1 PostgreSQL, and service administration only.
   private-services:
     internal: true
+  # Outbound-only path for Hermes cloud model/provider calls. It is not
+  # attached to the reverse proxy or Cloudflare ingress.
+  service-egress: {}
+
+volumes:
+  hermes-data: {}
