@@ -41,6 +41,9 @@ services:
       args:
         PYTHON_IMAGE: python:3.13.14-slim-bookworm@sha256:67a1e1f215ccda113cfc024e8639049257e88f273898f595b61476d128d387e8
     environment:
+      DATABASE_URL: ${DATABASE_URL:?Configure the Laptop 1 product database}
+      OIDC_ISSUER_URL: ${ZITADEL_ISSUER_URL:?Configure ZITADEL login first}
+      OIDC_CLIENT_ID: ${ZITADEL_CLIENT_ID:?Configure ZITADEL login first}
       HERMES_API_BASE_URL: http://hermes:8642
       HERMES_API_SERVER_KEY: ${HERMES_API_SERVER_KEY:?Run configure-phase1.ps1 first}
       HERMES_MODEL: hermes-agent

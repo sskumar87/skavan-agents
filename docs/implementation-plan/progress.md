@@ -18,6 +18,8 @@ This is the current execution ledger. It is updated when a component has been ve
 | PostgreSQL network binding | Docker port 5432 is bound to Laptop 1 private address only, preserving Laptop 2 access. |
 | Infrastructure source | Laptop 2 Compose, private ingress and Cloudflare Tunnel templates are committed; public Hermes/PostgreSQL routes are absent. |
 | ZITADEL application registration | `Skavan Platform` project and `Skavan Web` Authorization Code + PKCE client created with exact `https://skavan.skavapp.com` callback/logout URIs; no client secret or product-role claims are enabled. |
+| Public authentication | ZITADEL login and federated logout are working through the two Cloudflare Tunnel hostnames. |
+| V1 UI contract | Authenticated workspace prototype approved; four semantic CSS themes and responsive/accessibility development rules are locked in `docs/architecture/ui-design-system.md`. |
 
 ## In progress
 
@@ -26,13 +28,12 @@ This is the current execution ledger. It is updated when a component has been ve
 | Laptop 1 network hardening | Confirm approved Redis/Redis Insight consumers before changing their all-interface bindings. |
 | Backups and recovery | Enable user lingering for unattended timers, then choose encrypted off-host destination, recovery-key custody, disk/backup-failure alerting, retention and recovery objectives before production use. |
 | Laptop 2 deployment | Reviewed release tags and immutable multi-platform digests are recorded. Recreate the web/identity services with the protected environment and run the on-machine Compose validation. |
-| Identity ingress | Public hosts are `skavan.skavapp.com` and `auth.skavapp.com`. Verify public discovery, login, callback, logout and management-path restrictions after the identity restart. |
+| Product user synchronization | FastAPI verifies the ZITADEL ID token and idempotently links immutable issuer/subject identities to canonical product users. Rebuild the API/web containers and complete one live login/database check. |
 
 ## Not started
 
 | Component | Dependency |
 | --- | --- |
-| API foundation and identity bridge | Runnable ZITADEL configuration and Laptop 2 build images |
 | Groups, threads and Hermes streaming | API foundation and verified Hermes API contract |
 | Shared group memory application flow | API authorization layer; database storage is ready |
 | Normal-user UI | Stable identity/API contracts; use the documented responsive theme system |

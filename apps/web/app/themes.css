@@ -1,0 +1,81 @@
+/*
+ * Skavan theme contract. UI components consume semantic tokens only; they must
+ * never introduce theme-specific colour values. `data-theme` is persisted as
+ * a user preference and applied to the root html element.
+ */
+:root,
+[data-theme="neon-grid"] {
+  color-scheme: dark;
+  --color-bg: #050914;
+  --color-bg-glow: rgba(21, 217, 232, 0.08);
+  --color-surface: #0a1120;
+  --color-surface-raised: #0d1728;
+  --color-input: #060c17;
+  --color-border: #1d2d45;
+  --color-text: #e7f2ff;
+  --color-muted: #8da2bd;
+  --color-accent: #15d9e8;
+  --color-on-accent: #021014;
+  --color-accent-soft: rgba(21, 217, 232, 0.12);
+  --color-accent-border: rgba(21, 217, 232, 0.36);
+  --color-danger: #ff7187;
+  --color-success: #25d087;
+  --shadow-panel: 0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="violet-pulse"] {
+  color-scheme: dark;
+  --color-bg: #090717;
+  --color-bg-glow: rgba(139, 92, 246, 0.11);
+  --color-surface: #110d22;
+  --color-surface-raised: #181130;
+  --color-input: #0c091a;
+  --color-border: #302451;
+  --color-text: #f1edff;
+  --color-muted: #a99cc8;
+  --color-accent: #9c78ff;
+  --color-on-accent: #100828;
+  --color-accent-soft: rgba(156, 120, 255, 0.14);
+  --color-accent-border: rgba(156, 120, 255, 0.4);
+  --color-danger: #ff7c9c;
+  --color-success: #3dd9a0;
+  --shadow-panel: 0 18px 50px rgba(2, 0, 12, 0.48);
+}
+
+[data-theme="amber-terminal"] {
+  color-scheme: dark;
+  --color-bg: #0c0904;
+  --color-bg-glow: rgba(247, 167, 38, 0.09);
+  --color-surface: #151005;
+  --color-surface-raised: #1d1608;
+  --color-input: #100c04;
+  --color-border: #493617;
+  --color-text: #fff4d8;
+  --color-muted: #bca77c;
+  --color-accent: #f7a726;
+  --color-on-accent: #1d1000;
+  --color-accent-soft: rgba(247, 167, 38, 0.14);
+  --color-accent-border: rgba(247, 167, 38, 0.42);
+  --color-danger: #ff765f;
+  --color-success: #75d47d;
+  --shadow-panel: 0 18px 50px rgba(7, 4, 0, 0.5);
+}
+
+[data-theme="daylight-circuit"] {
+  color-scheme: light;
+  --color-bg: #f3f7fc;
+  --color-bg-glow: rgba(25, 132, 188, 0.1);
+  --color-surface: #ffffff;
+  --color-surface-raised: #f7faff;
+  --color-input: #ffffff;
+  --color-border: #ccd8e6;
+  --color-text: #132238;
+  --color-muted: #61748c;
+  --color-accent: #087fa8;
+  --color-on-accent: #ffffff;
+  --color-accent-soft: rgba(8, 127, 168, 0.1);
+  --color-accent-border: rgba(8, 127, 168, 0.34);
+  --color-danger: #c43e55;
+  --color-success: #16845b;
+  --shadow-panel: 0 18px 48px rgba(42, 65, 91, 0.13);
+}

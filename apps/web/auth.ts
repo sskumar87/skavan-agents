@@ -4,6 +4,24 @@ import Zitadel from "next-auth/providers/zitadel";
 const issuer = process.env.ZITADEL_ISSUER_URL ?? "https://zitadel.invalid";
 const clientId = process.env.ZITADEL_CLIENT_ID ?? "zitadel-client-not-configured";
 
+type PlatformUser = {
+  id: string;
+  preferences: Record<string, unknown>;
+};
+
+async function synchronizePlatformUser(idToken: string): Promise<PlatformUser> {
+  const response = await fetch(
+    `${process.env.API_BASE_URL ?? "http://127.0.0.1:8000"}/api/auth/sync`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${idToken}` },
+      cache: "no-store",
+    },
+  );
+  if (!response.ok) throw new Error("Unable to synchronize the platform user");
+  return response.json() as Promise<PlatformUser>;
+}
+
 export function buildFederatedLogoutUrl() {
   const appOrigin = process.env.APP_ORIGIN ?? process.env.AUTH_URL ?? "http://localhost:8080";
   const logoutUrl = new URL("/oidc/v1/end_session", issuer);
@@ -45,15 +63,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    jwt({ token, profile }) {
+    async jwt({ token, profile, account }) {
       if (profile?.sub) token.externalSubject = profile.sub;
+      if (account?.id_token) {
+        const platformUser = await synchronizePlatformUser(account.id_token);
+        token.platformUserId = platformUser.id;
+        token.userPreferences = platformUser.preferences;
+      }
       return token;
     },
     session({ session, token }) {
-      if (session.user) {
-        session.user.id = String(token.externalSubject ?? token.sub ?? "");
-      }
-      return session;
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          id: String(token.externalSubject ?? token.sub ?? ""),
+          platformUserId: String(token.platformUserId ?? ""),
+          preferences: token.userPreferences ?? {},
+        },
+      };
     },
   },
 });

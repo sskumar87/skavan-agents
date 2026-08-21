@@ -1,15 +1,44 @@
 import json
 from collections.abc import AsyncIterator
+from functools import lru_cache
 from typing import Literal
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.database import get_database_session
 from app.hermes import HermesAdapter, HermesError
+from app.identity import OidcTokenVerifier, synchronize_user
 
 
 app = FastAPI(title="Skavan Agents API", version="0.1.0")
+
+
+class PlatformUser(BaseModel):
+    id: str
+    display_name: str
+    email: str | None
+    preferences: dict[str, object]
+
+
+@lru_cache
+def get_token_verifier() -> OidcTokenVerifier:
+    return OidcTokenVerifier()
+
+
+@app.post("/api/auth/sync", response_model=PlatformUser, tags=["auth"])
+async def sync_authenticated_user(
+    authorization: str | None = Header(default=None),
+    session: AsyncSession = Depends(get_database_session),
+    verifier: OidcTokenVerifier = Depends(get_token_verifier),
+) -> PlatformUser:
+    scheme, _, token = (authorization or "").partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(status_code=401, detail="Bearer identity token required")
+    identity = await verifier.verify(token)
+    return PlatformUser.model_validate(await synchronize_user(session, identity))
 
 
 @app.get("/healthz", tags=["system"])
