@@ -8,7 +8,6 @@ umask 077
 
 CONTAINER_NAME="${SKAVAN_DB_CONTAINER:-skav-timescaledb}"
 DATABASE_NAME="${SKAVAN_DB_NAME:-skavan}"
-DATABASE_USER="${SKAVAN_BACKUP_DB_USER:-skav_user}"
 BACKUP_DIR="${SKAVAN_BACKUP_DIR:-$HOME/.local/share/skavan-backups}"
 LOCK_FILE="${SKAVAN_BACKUP_LOCK_FILE:-$HOME/.local/state/skavan/backup.lock}"
 
@@ -24,8 +23,18 @@ require_command flock
 require_command sha256sum
 require_command date
 
-if [[ ! "$DATABASE_NAME" =~ ^[a-zA-Z0-9_]+$ ]]; then
-  echo "Unsafe database name: $DATABASE_NAME" >&2
+case "$DATABASE_NAME" in
+  skavan) expected_database_user="skavan_backup" ;;
+  zitadel) expected_database_user="zitadel_backup" ;;
+  *)
+    echo "Database is not in the backup allowlist: $DATABASE_NAME" >&2
+    exit 1
+    ;;
+esac
+
+DATABASE_USER="${SKAVAN_BACKUP_DB_USER:-$expected_database_user}"
+if [[ "$DATABASE_USER" != "$expected_database_user" ]]; then
+  echo "Unexpected backup role $DATABASE_USER for database $DATABASE_NAME" >&2
   exit 1
 fi
 

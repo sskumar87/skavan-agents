@@ -13,18 +13,29 @@ upload, retention deletion, encryption or restore-overwrite behavior. Those
 safeguards avoid silently choosing a cloud provider, recovery key or deletion
 policy for the operator.
 
+The script only accepts the exact database/role pairs `skavan`/
+`skavan_backup` and `zitadel`/`zitadel_backup`. Create those scoped roles with
+`create-backup-roles.sql` before enabling either timer. The existing `skav`
+database is deliberately absent from the allowlist.
+
 ### Install on Laptop 1
 
-1. Copy the script to `/usr/local/sbin/backup-skavan`, make it executable, and
-   create `/home/shyam/.local/share/skavan-backups` with mode `700`.
+These units are user services because Laptop 1 runs Docker Desktop for Linux.
+They use its user-level `docker-desktop.service` and explicit Unix socket rather
+than the inactive system `docker.service`.
+
+1. Copy the script to `/home/shyam/.local/bin/backup-skavan`, make it executable,
+   and create `/home/shyam/.local/share/skavan-backups` with mode `700`.
 2. Run it once manually as `shyam`. Check that it writes a `.dump` and matching
    `.sha256` file with mode `600`.
-3. Install the product service/timer templates as
-   `/etc/systemd/system/skavan-backup.service` and
-   `/etc/systemd/system/skavan-backup.timer`. Install the ZITADEL pair as
-   `zitadel-backup.service` and `zitadel-backup.timer`; then enable both timers.
-4. Verify both timers with `systemctl list-timers` and inspect each service's
-   last result before relying on the schedule.
+3. Install the product and ZITADEL service/timer templates under
+   `/home/shyam/.config/systemd/user/`, reload the user manager, then enable both
+   timers with `systemctl --user enable --now`.
+4. Verify both timers with `systemctl --user list-timers` and inspect each
+   service's last result before relying on the schedule.
+5. User services do not run while `shyam` is logged out unless lingering is
+   enabled. An administrator must run `sudo loginctl enable-linger shyam`, then
+   verify `loginctl show-user shyam -p Linger` reports `yes`.
 
 Do not call this a complete production backup until the dump and checksum are
 encrypted and copied to an approved, access-controlled location outside Laptop

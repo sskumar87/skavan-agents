@@ -12,7 +12,7 @@ This is the current execution ledger. It is updated when a component has been ve
 | pgvector baseline | `vector` 0.8.1 enabled; `vector(1536)` group-memory column and cosine HNSW index validated. |
 | Alembic baseline | Revision `20260821_0001` applied forward-only to `skavan` after a disposable-database validation run. |
 | Backup and restore rehearsal | A custom-format backup of the empty baseline database was restored into an isolated disposable database; revision `20260821_0001` was verified, then the disposable databases were removed. |
-| Local backup automation | Backup script generated and checksummed a fresh `skavan` dump on Laptop 1 without touching the existing `skav` database. |
+| Local backup automation | Docker Desktop user timers are installed for `skavan` and `zitadel`; both scoped-role jobs completed with valid checksums and the script rejects the existing `skav` database. |
 | Reproducible app builds | Latest stable web/API dependencies are locked; production Dockerfiles, health checks and Hermes outbound-only egress are defined. API tests and the Next.js standalone build pass. |
 | Clean-machine CI | GitHub Actions run 32447450529 passed API tests, web audit/type-check/build, full Compose-profile validation and both production container builds. |
 | PostgreSQL network binding | Docker port 5432 is bound to Laptop 1 private address only, preserving Laptop 2 access. |
@@ -23,7 +23,7 @@ This is the current execution ledger. It is updated when a component has been ve
 | Component | Next action |
 | --- | --- |
 | Laptop 1 network hardening | Confirm approved Redis/Redis Insight consumers before changing their all-interface bindings. |
-| Backups and recovery | Product and ZITADEL local backup schedules are templated. Install/verify both timers, then choose encrypted off-host destination, recovery-key custody and recovery objectives before production use. |
+| Backups and recovery | Enable user lingering for unattended timers, then choose encrypted off-host destination, recovery-key custody, disk/backup-failure alerting, retention and recovery objectives before production use. |
 | Laptop 2 deployment | Reviewed release tags and immutable multi-platform digests are recorded. Complete vendor-specific ZITADEL configuration and run Docker Compose/build validation on Laptop 2. |
 | Identity ingress | Choose app/auth hostnames and implement verified ZITADEL public OIDC routing while keeping administration private. |
 
