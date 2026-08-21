@@ -11,10 +11,14 @@
 - [x] Start Hermes, API and web on Laptop 2
 - [x] Send one real UI message through FastAPI to Hermes
 - [x] Replace the non-streaming response with SSE streaming
+- [ ] Complete ZITADEL login bootstrap and verify login/logout end to end
+- [x] Add protected Next.js chat and authenticated BFF routes
+- [x] Remove the browser-to-FastAPI route
 
 ## Important, deferred until the chat slice works
 
-- ZITADEL login and immutable `sub` identity mapping
+- Persist the immutable ZITADEL `sub` identity mapping in PostgreSQL
+- Add Google social login through ZITADEL after basic login is verified
 - PostgreSQL persistence for users, groups, threads and messages
 - Group roles and authorization checks
 - Shared pgvector memory and release-blocking cross-group isolation tests

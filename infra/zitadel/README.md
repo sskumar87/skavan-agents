@@ -4,6 +4,34 @@ Self-hosted ZITADEL is the OIDC/OAuth2 identity provider. This platform maps
 the immutable OIDC `sub` to its own user record and evaluates product
 authorization locally.
 
+## Phase 1 local login
+
+The minimal Laptop 2 flow uses `http://auth.localhost:8081` and the existing
+Laptop 1 PostgreSQL server. It does not start another PostgreSQL container.
+Use `http://localhost:8080` (not the numeric loopback address) for the Skavan
+application while testing OIDC so its callback and cookies use one hostname.
+
+Before starting the `identity` profile:
+
+1. Create a dedicated `zitadel` database and owner on Laptop 1.
+2. Put its DSN, a strong initial administrator password, and the path to a
+   protected 32-character master-key file in the external phase-one `.env`.
+3. Start `docker compose --env-file <protected-env> -f
+   infra/docker/compose.phase1.yml --profile identity up -d --wait`.
+4. Open `http://auth.localhost:8081/ui/console` and create a project plus a Web
+   OIDC application using Authorization Code + PKCE and development mode.
+5. Register redirect URI
+   `http://localhost:8080/auth/callback/zitadel`. Register post-logout URI
+   `http://localhost:8080/login`.
+6. Put the generated client ID in `ZITADEL_CLIENT_ID`. Set
+   `ZITADEL_ISSUER_URL=http://auth.localhost:8081`, generate independent random
+   values for `AUTH_SECRET` and `ZITADEL_CLIENT_SECRET`, then rebuild the web
+   service.
+
+The local HTTP configuration is strictly a Laptop 2 bootstrap mode. Cloudflare
+deployment uses a final `https://auth.<domain>` issuer and exact HTTPS callback
+URLs; do not enable ZITADEL development mode there.
+
 The Laptop 2 Compose template follows ZITADEL v4.17.1's production-like
 lifecycle: `zitadel-init`, `zitadel-setup`, `zitadel-api`, `zitadel-login`, and
 an HTTP/2-capable Traefik proxy. ZITADEL's PostgreSQL database remains on

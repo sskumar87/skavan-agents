@@ -17,15 +17,10 @@ http {
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header X-Frame-Options "DENY" always;
 
+    # FastAPI is internal. Browser requests use authenticated Next.js BFF
+    # routes under /bff; there is no public direct API bypass.
     location /api/ {
-      proxy_pass http://api_upstream;
-      proxy_http_version 1.1;
-      proxy_set_header Host $host;
-      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-      proxy_set_header X-Forwarded-Proto https;
-      proxy_set_header X-Request-ID $request_id;
-      proxy_read_timeout 3600s;
-      proxy_buffering off;
+      return 404;
     }
 
     location / {
@@ -35,6 +30,8 @@ http {
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
       proxy_set_header X-Forwarded-Proto https;
       proxy_set_header X-Request-ID $request_id;
+      proxy_read_timeout 3600s;
+      proxy_buffering off;
     }
 
     # No Hermes API, Dashboard, Gateway, ZITADEL administration, PostgreSQL,
