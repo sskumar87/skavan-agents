@@ -51,6 +51,11 @@ The canonical token definitions live in `apps/web/app/themes.css`. Components
 must use semantic `--color-*` and `--shadow-*` tokens. A component must not
 branch on a theme name or introduce theme-specific colour literals.
 
+Reusable surface, brand, tab, form, action, theme-picker, and responsive auth
+patterns live in `apps/web/app/ui-patterns.css`. New pages must compose these
+patterns before adding page-specific CSS. The approved interactive auth
+reference is `docs/ui/prototypes/login-registration-v1.html`.
+
 Theme choice belongs in `users.preferences.theme`. The server supplies the saved
 preference at session bootstrap, the root `<html data-theme>` receives it before
 interactive rendering, and a change is persisted through the platform API. The

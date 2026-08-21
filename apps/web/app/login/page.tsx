@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth, isAuthConfigured, signIn } from "../../auth";
+import { AuthShell } from "../components/auth-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -9,29 +10,15 @@ export default async function LoginPage() {
 
   const configured = isAuthConfigured();
 
-  return (
-    <main className="loginShell">
-      <section className="loginCard" aria-labelledby="login-title">
-        <div className="brand loginBrand">
-          <img className="brandLogo" src="/skav-mark.svg" alt="" aria-hidden="true" />
-          <div><p className="eyebrow">SKAV PLATFORM</p><h1 id="login-title">Agent access</h1></div>
-        </div>
-        <p className="loginCopy">
-          Sign in through the platform identity service to open your private Hermes workspace.
-        </p>
-        {configured ? (
-          <form action={async () => {
-            "use server";
-            await signIn("zitadel", { redirectTo: "/" });
-          }}>
-            <button className="loginButton" type="submit">Sign in with ZITADEL</button>
-          </form>
-        ) : (
-          <p className="error" role="alert">
-            Login is not configured yet. Add the server-side ZITADEL settings and restart the web service.
-          </p>
-        )}
-      </section>
-    </main>
-  );
+  async function signInAction() {
+    "use server";
+    await signIn("zitadel", { redirectTo: "/" });
+  }
+
+  async function registerAction() {
+    "use server";
+    await signIn("zitadel", { redirectTo: "/" }, { prompt: "create" });
+  }
+
+  return <AuthShell configured={configured} signInAction={signInAction} registerAction={registerAction} />;
 }

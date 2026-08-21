@@ -20,10 +20,10 @@ When a replacement is explicitly approved, add it as a new versioned file,
 update the design contract and checksum, and preserve the prior mockup in Git
 history. Do not silently overwrite the approved reference.
 
-## Login and registration V1 candidate
+## Login and registration V1
 
 - File: `../prototypes/login-registration-v1.html`
-- Status: interactive candidate awaiting product approval
+- Status: approved and locked on 2026-08-21
 - SHA-256: `3B90FD8ECA6115E44C7435DF82C74BE023A9292627CD85ACBCDF5F3F8C294DE8`
 - Design contract: `docs/architecture/ui-design-system.md`
 

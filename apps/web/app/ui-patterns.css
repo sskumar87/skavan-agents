@@ -1,0 +1,66 @@
+/*
+ * Canonical reusable Skavan UI patterns. Page components compose these
+ * primitives and consume theme tokens from themes.css; no theme-specific
+ * literals belong in component styles.
+ */
+.uiBrand { display: inline-flex; align-items: center; gap: 11px; color: var(--color-text); text-decoration: none; font: 700 13px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .12em; }
+.uiBrand img { width: 28px; height: 28px; object-fit: contain; filter: drop-shadow(0 0 8px var(--color-accent-soft)); }
+
+.uiPanel { border: 1px solid var(--color-border); border-radius: 16px; background: var(--color-surface); box-shadow: var(--shadow-panel); }
+
+.uiTabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-bottom: 1px solid var(--color-border); }
+.uiTabs button { min-height: 44px; padding: 10px 6px 12px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: transparent; color: var(--color-muted); font-weight: 650; }
+.uiTabs button[aria-selected="true"] { border-bottom-color: var(--color-accent); color: var(--color-accent); }
+
+.uiPrimaryAction { min-height: 48px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 9px; border: 1px solid var(--color-accent); border-radius: 9px; background: var(--color-accent); color: var(--color-on-accent); box-shadow: 0 8px 24px var(--color-accent-soft); }
+.uiPrimaryAction svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.uiField { display: grid; gap: 7px; color: var(--color-muted); font-size: 12px; font-weight: 650; }
+.uiInput { min-height: 44px; width: 100%; padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 8px; outline: none; background: var(--color-input); color: var(--color-text); }
+.uiInput:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-accent-soft); }
+.uiError { color: var(--color-danger); font-size: 13px; line-height: 1.5; }
+
+.uiThemePicker { display: flex; align-items: center; gap: 7px; }
+.uiThemePicker > span { margin-right: 4px; color: var(--color-muted); font: 650 10px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .15em; }
+.themeSwatch { width: 27px; height: 27px; min-width: 27px; padding: 4px; border: 1px solid transparent; border-radius: 7px; background: transparent; }
+.themeSwatch[aria-pressed="true"] { border-color: var(--color-accent); background: var(--color-accent-soft); }
+.themeSwatch > span { display: block; width: 100%; height: 100%; border-radius: 4px; }
+.themeSwatch.neon-grid > span { background: #15d9e8; }
+.themeSwatch.violet-pulse > span { background: #9c78ff; }
+.themeSwatch.amber-terminal > span { background: #f7a726; }
+.themeSwatch.daylight-circuit > span { border: 1px solid #8ca0ad; background: linear-gradient(135deg, #fff 50%, #087fa8 50%); }
+
+.authPage { min-height: 100dvh; padding: 24px; display: grid; place-items: center; }
+.authWindow { width: min(100%, 1120px); overflow: hidden; position: relative; border: 1px solid var(--color-border); border-radius: 18px; background: var(--color-bg); box-shadow: var(--shadow-panel); }
+.authWindow::before { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: linear-gradient(var(--color-bg-glow) 1px, transparent 1px), linear-gradient(90deg, var(--color-bg-glow) 1px, transparent 1px); background-size: 34px 34px; }
+.authTopbar { min-height: 64px; position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 16px 22px; border-bottom: 1px solid var(--color-border); background: var(--color-bg); }
+.authLayout { min-height: 560px; position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(340px, .92fr); }
+.authHero { position: relative; overflow: hidden; display: flex; align-items: center; padding: 56px 7%; }
+.authHero::after { content: ""; width: 420px; height: 420px; position: absolute; left: -210px; bottom: -250px; border-radius: 50%; background: var(--color-accent-soft); filter: blur(6px); }
+.authHero h1 { max-width: 620px; position: relative; z-index: 1; margin: 0; color: var(--color-text); font-size: clamp(32px, 4.6vw, 54px); font-weight: 700; line-height: 1.06; letter-spacing: -.035em; }
+.authScanline { position: absolute; inset: 13% 8%; opacity: .34; background: linear-gradient(90deg, transparent, var(--color-accent-soft), transparent); clip-path: polygon(0 48%, 100% 0, 100% 3%, 0 52%); }
+.authPanel { align-self: center; margin: 28px 28px 28px 0; padding: 36px 38px 34px; }
+.authPanelMeta { display: flex; justify-content: space-between; color: var(--color-accent); font: 650 10px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .14em; }
+.authPanelMeta span:last-child { color: var(--color-muted); }
+.authPanel h2 { margin: 13px 0 24px; font-size: 28px; letter-spacing: -.025em; }
+.authPanel .uiTabs { margin-bottom: 28px; }
+.authActionForm { margin: 0; }
+.authFooter { min-height: 48px; position: relative; z-index: 1; display: flex; align-items: center; padding: 14px 22px; border-top: 1px solid var(--color-border); color: var(--color-muted); font: 650 9px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .1em; }
+
+@media (max-width: 760px) {
+  .authPage { padding: 12px; }
+  .authLayout { grid-template-columns: 1fr; min-height: 0; }
+  .authHero { min-height: 220px; padding: 34px 24px 26px; }
+  .authHero h1 { font-size: 34px; }
+  .authPanel { margin: 0 18px 24px; padding: 28px 24px 26px; }
+}
+
+@media (max-width: 460px) {
+  .authPage { padding: 0; }
+  .authWindow { min-height: 100dvh; border: 0; border-radius: 0; }
+  .authTopbar { align-items: flex-start; flex-direction: column; padding: 16px; }
+  .authHero { min-height: 190px; padding: 28px 18px 22px; }
+  .authHero h1 { font-size: 29px; }
+  .authPanel { margin: 0 10px 16px; padding: 24px 18px; }
+  .authFooter { padding: 14px 16px; }
+}
