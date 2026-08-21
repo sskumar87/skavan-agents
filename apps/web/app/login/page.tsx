@@ -20,9 +20,11 @@ export default async function LoginPage() {
     const email = String(formData.get("email") ?? "").trim().toLowerCase();
     if (!email || email.length > 254 || !email.includes("@")) redirect("/login");
 
+    const includeWork = formData.get("work") === "on";
+    const redirectTo = includeWork ? "/onboarding?work=1" : "/onboarding";
     await signIn(
       "zitadel",
-      { redirectTo: "/" },
+      { redirectTo },
       { prompt: "create", login_hint: email },
     );
   }

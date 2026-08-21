@@ -13,11 +13,14 @@ USER_ID = "d34ab70c-4cec-4361-86b2-e3b8c97241ec"
 
 
 def test_hermes_session_key_is_sent_as_a_request_header() -> None:
-    adapter = HermesAdapter(base_url="http://hermes:8642", api_key="a" * 32)
+    adapter = HermesAdapter(
+        base_url="http://hermes:8642", api_key="a" * 32,
+        personal_api_key="p" * 32, work_api_key="w" * 32,
+    )
 
-    assert adapter.request_headers(f"skavan:user:{USER_ID}") == {
-        "Authorization": f"Bearer {'a' * 32}",
-        "X-Hermes-Session-Key": f"skavan:user:{USER_ID}",
+    assert adapter.request_headers("skavan:profile:personal", "personal") == {
+        "Authorization": f"Bearer {'p' * 32}",
+        "X-Hermes-Session-Key": "skavan:profile:personal",
     }
 
 
@@ -34,8 +37,9 @@ class FakeSessionFactory:
         return FakeSessionContext()
 
 
-async def fake_ensure_personal_thread(session, user_id):
+async def fake_ensure_profile_context(session, user_id, profile):
     assert user_id == UUID(USER_ID)
+    assert profile == "personal"
     return UUID("f3a79589-1097-4bf4-8b09-893c39946f13")
 
 
@@ -43,8 +47,8 @@ async def fake_append_message(session, **values):
     return UUID("827cae77-34b9-41ae-92f9-c61ca6de8205")
 
 
-async def fake_require_personal_thread(session, user_id, thread_id):
-    assert user_id == UUID(USER_ID)
+async def fake_require_profile_thread(session, profile, thread_id):
+    assert profile == "personal"
     return thread_id
 
 
@@ -59,12 +63,18 @@ async def fake_load_messages(session, thread_id, limit=100):
     }]
 
 
+async def fake_get_user_profiles(session, user_id):
+    assert user_id == UUID(USER_ID)
+    return ["personal", "work"]
+
+
 def configure_conversation_fakes(monkeypatch) -> None:
     monkeypatch.setattr(main, "get_session_factory", lambda: FakeSessionFactory())
-    monkeypatch.setattr(main, "ensure_personal_thread", fake_ensure_personal_thread)
+    monkeypatch.setattr(main, "ensure_profile_context", fake_ensure_profile_context)
     monkeypatch.setattr(main, "append_message", fake_append_message)
     monkeypatch.setattr(main, "load_messages", fake_load_messages)
-    monkeypatch.setattr(main, "require_personal_thread", fake_require_personal_thread)
+    monkeypatch.setattr(main, "require_profile_thread", fake_require_profile_thread)
+    monkeypatch.setattr(main, "get_user_profiles", fake_get_user_profiles)
 
 
 class FakeHermesAdapter:
@@ -73,31 +83,36 @@ class FakeHermesAdapter:
 
     async def complete(
         self, messages: list[dict[str, str]], *, session_key: str | None = None,
+        profile: str | None = None,
     ) -> str:
         assert messages == [{"role": "user", "content": "Hello Hermes"}]
-        assert session_key == f"skavan:user:{USER_ID}"
+        assert session_key == "skavan:profile:personal"
+        assert profile == "personal"
         return "Hello from Hermes"
 
     async def stream(
-        self, messages: list[dict[str, str]], *, session_key: str,
+        self, messages: list[dict[str, str]], *, session_key: str, profile: str,
     ) -> AsyncIterator[str]:
         assert messages == [{"role": "user", "content": "Hello Hermes"}]
-        assert session_key == f"skavan:user:{USER_ID}"
+        assert session_key == "skavan:profile:personal"
+        assert profile == "personal"
         yield "Hello "
         yield "from Hermes"
 
 
 class FailingHermesAdapter:
     async def stream(
-        self, messages: list[dict[str, str]], *, session_key: str,
+        self, messages: list[dict[str, str]], *, session_key: str, profile: str,
     ) -> AsyncIterator[str]:
-        assert session_key == f"skavan:user:{USER_ID}"
+        assert session_key == "skavan:profile:personal"
+        assert profile == "personal"
         if False:
             yield ""
         raise HermesError("Hermes is temporarily unavailable.")
 
 
-def test_chat_uses_backend_hermes_adapter() -> None:
+def test_chat_uses_backend_hermes_adapter(monkeypatch) -> None:
+    configure_conversation_fakes(monkeypatch)
     app.dependency_overrides[get_hermes_adapter] = lambda: FakeHermesAdapter()
     try:
         response = TestClient(app).post(

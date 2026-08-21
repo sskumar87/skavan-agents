@@ -17,7 +17,7 @@ This is the current execution ledger. It is updated when a component has been ve
 | Clean-machine CI | GitHub Actions run 32447450529 passed API tests, web audit/type-check/build, full Compose-profile validation and both production container builds. |
 | PostgreSQL network binding | Docker port 5432 is bound to Laptop 1 private address only, preserving Laptop 2 access. |
 | Infrastructure source | Laptop 2 Compose, private ingress and Cloudflare Tunnel templates are committed; public Hermes/PostgreSQL routes are absent. |
-| ZITADEL application registration | `Skavan Platform` project and `Skavan Web` Authorization Code + PKCE client created with exact `https://skavan.skavapp.com` callback/logout URIs; no client secret or product-role claims are enabled. |
+| ZITADEL application registration | `Skavan Platform` project and `Skavan Web` Authorization Code + PKCE client created with exact `https://skavan.skavapp.com` callback/logout URIs. |
 | Public authentication | ZITADEL login and federated logout are working through the two Cloudflare Tunnel hostnames. |
 | V1 UI contract | Authenticated workspace prototype approved; four semantic CSS themes and responsive/accessibility development rules are locked in `docs/architecture/ui-design-system.md`. |
 
@@ -27,17 +27,17 @@ This is the current execution ledger. It is updated when a component has been ve
 | --- | --- |
 | Laptop 1 network hardening | Confirm approved Redis/Redis Insight consumers before changing their all-interface bindings. |
 | Backups and recovery | Enable user lingering for unattended timers, then choose encrypted off-host destination, recovery-key custody, disk/backup-failure alerting, retention and recovery objectives before production use. |
-| Laptop 2 deployment | Reviewed release tags and immutable multi-platform digests are recorded. Recreate the web/identity services with the protected environment and run the on-machine Compose validation. |
-| Product user synchronization | FastAPI verifies the ZITADEL ID token and idempotently links immutable issuer/subject identities to canonical product users. Rebuild the API/web containers and complete one live login/database check. |
-| Personal conversation persistence | Default private workspace/thread, ordered PostgreSQL message storage, authoritative history loading, and Hermes context replay are implemented. Rebuild API/web and verify refresh continuity. |
+| ZITADEL profile roles | Create `profile.personal` and `profile.work`, enable project role assertion, provision a least-privilege role-assignment service identity, and assign existing users before deployment. |
+| Shared Hermes profiles | Migration helper is prepared to isolate Hermes data and create Personal/Work multiplex profiles with distinct API keys. Run it, restart Hermes, and verify both routes plus wrong-key rejection. |
+| Shared profile conversations | Role-scoped profile selector, shared threads, message attribution, registration choices and ZITADEL provisioning path are implemented. Configure identity/profile infrastructure, rebuild, and complete multi-user acceptance tests. |
+| Legacy chat cleanup | Preview and cleanup SQL are prepared. Run only after shared profile threads are deployed and verified; do not expose or auto-migrate old private histories. |
 
 ## Not started
 
 | Component | Dependency |
 | --- | --- |
-| Collaborative groups and thread management UI | Verified personal conversation persistence and membership authorization endpoints |
-| Shared group memory application flow | API authorization layer; database storage is ready |
-| Normal-user UI | Stable identity/API contracts; use the documented responsive theme system |
+| Profile backup/restore rehearsal | Personal and Work profile data directories must be backed up and restored independently. |
+| Shared memory acceptance test | Confirm `USER.md`/`MEMORY.md` are shared within each profile and isolated between Personal and Work. |
 
 ## Decisions still required
 

@@ -5,6 +5,7 @@ declare module "next-auth" {
   interface User {
     platformUserId?: string;
     preferences?: Record<string, unknown>;
+    roles?: string[];
   }
 
   interface Session {
@@ -12,6 +13,7 @@ declare module "next-auth" {
       id: string;
       platformUserId: string;
       preferences: Record<string, unknown>;
+      roles: string[];
       name?: string | null;
       email?: string | null;
       image?: string | null;
@@ -25,5 +27,6 @@ declare module "@auth/core/jwt" {
     platformUserId?: string;
     platformGivenName?: string;
     userPreferences?: Record<string, unknown>;
+    profileRoles?: string[];
   }
 }

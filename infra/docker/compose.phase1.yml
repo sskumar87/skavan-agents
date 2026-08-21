@@ -46,8 +46,14 @@ services:
       OIDC_CLIENT_ID: ${ZITADEL_CLIENT_ID:?Configure ZITADEL login first}
       # Retrieve signing keys privately; token issuer validation remains public.
       OIDC_JWKS_URL: http://zitadel-proxy:8081/oauth/v2/keys
+      ZITADEL_MANAGEMENT_BASE_URL: http://zitadel-proxy:8081
+      ZITADEL_ROLE_PROVISIONER_TOKEN: ${ZITADEL_ROLE_PROVISIONER_TOKEN:?Configure the registration role provisioner}
+      ZITADEL_PROJECT_ID: ${ZITADEL_PROJECT_ID:?Configure the Skavan ZITADEL project}
+      ZITADEL_ORGANIZATION_ID: ${ZITADEL_ORGANIZATION_ID:?Configure the Skavan ZITADEL organization}
       HERMES_API_BASE_URL: http://hermes:8642
       HERMES_API_SERVER_KEY: ${HERMES_API_SERVER_KEY:?Run configure-phase1.ps1 first}
+      HERMES_PERSONAL_API_SERVER_KEY: ${HERMES_PERSONAL_API_SERVER_KEY:?Configure the Personal Hermes profile}
+      HERMES_WORK_API_SERVER_KEY: ${HERMES_WORK_API_SERVER_KEY:?Configure the Work Hermes profile}
       HERMES_MODEL: hermes-agent
     depends_on:
       hermes:
@@ -76,7 +82,7 @@ services:
     ports:
       - "127.0.0.1:9119:9119"
     volumes:
-      - ${HERMES_DATA_DIR:-C:/SKAV_PLATFORM/secrets/skavan-phase1}:/opt/data
+      - ${HERMES_DATA_DIR:-C:/SKAV_PLATFORM/secrets/skavan-phase1/hermes}:/opt/data
       - ${SKAV_PLATFORM_DIR:-C:/SKAV_PLATFORM}:/workspace:ro
       - hermes-workspace-secrets-mask:/workspace/secrets
     healthcheck:

@@ -39,6 +39,16 @@ Before starting the `identity` profile:
 7. Put the generated client ID in `ZITADEL_CLIENT_ID` in the protected `.env`,
    then rebuild the web service. The setup script has already generated the
    remaining authentication values. PKCE clients do not use a client secret.
+8. In the Skavan project, create `profile.personal` and `profile.work`, enable
+   **Return user roles during authentication**, and enable roles in the web
+   application's ID token settings. Store the project and organization IDs as
+   `ZITADEL_PROJECT_ID` and `ZITADEL_ORGANIZATION_ID`.
+9. Create a dedicated service account with only the organization permission
+   needed to read/write user role assignments (`ORG_USER_PERMISSION_EDITOR`).
+   Store its PAT only as `ZITADEL_ROLE_PROVISIONER_TOKEN` in the protected
+   environment. Registration uses it to assign Personal and optional Work,
+   then forces a new OIDC exchange so access starts only when those roles are
+   present in the user's JWT.
 
 The local HTTP configuration is strictly a Laptop 2 bootstrap mode. Cloudflare
 deployment uses a final `https://auth.<domain>` issuer and exact HTTPS callback

@@ -2,7 +2,7 @@ import { auth } from "../../../../auth";
 
 export const dynamic = "force-dynamic";
 
-async function proxy(method: "GET" | "POST", request: Request) {
+export async function POST(request: Request) {
   const session = await auth();
   const platformUserId = session?.user && "platformUserId" in session.user
     ? String(session.user.platformUserId)
@@ -12,17 +12,15 @@ async function proxy(method: "GET" | "POST", request: Request) {
   }
 
   try {
-    const profile = new URL(request.url).searchParams.get("profile");
-    const query = method === "GET" && profile ? `?profile=${encodeURIComponent(profile)}` : "";
     const upstream = await fetch(
-      `${process.env.API_BASE_URL ?? "http://127.0.0.1:8000"}/api/chat/threads${query}`,
+      `${process.env.API_BASE_URL ?? "http://127.0.0.1:8000"}/api/auth/registration-profiles`,
       {
-        method,
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-Skavan-User-Id": platformUserId,
         },
-        body: method === "POST" ? await request.text() : undefined,
+        body: await request.text(),
         cache: "no-store",
       },
     );
@@ -31,9 +29,6 @@ async function proxy(method: "GET" | "POST", request: Request) {
       headers: { "Content-Type": upstream.headers.get("content-type") ?? "application/json" },
     });
   } catch {
-    return Response.json({ detail: "The platform API is unavailable" }, { status: 502 });
+    return Response.json({ detail: "The identity service is unavailable" }, { status: 502 });
   }
 }
-
-export async function GET(request: Request) { return proxy("GET", request); }
-export async function POST(request: Request) { return proxy("POST", request); }

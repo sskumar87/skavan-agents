@@ -47,6 +47,20 @@
 .authActionForm { margin: 0; }
 .authRegistrationForm { display: grid; gap: 15px; }
 .authRegistrationForm .uiPrimaryAction { margin-top: 2px; }
+.registrationProfiles { min-width: 0; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; border: 0; }
+.registrationProfiles legend { grid-column: 1 / -1; margin-bottom: 1px; color: var(--color-muted); font-size: 12px; font-weight: 650; }
+.profileChoice { min-height: 66px; padding: 11px; display: flex; align-items: center; gap: 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-input); color: var(--color-text); cursor: pointer; }
+.profileChoice:has(input:checked) { border-color: var(--color-accent); background: var(--color-accent-soft); }
+.profileChoice input { width: 17px; height: 17px; margin: 0; accent-color: var(--color-accent); }
+.profileChoice span { min-width: 0; display: grid; gap: 4px; }
+.profileChoice strong { font-size: 12px; }.profileChoice small { color: var(--color-muted); font-size: 10px; line-height: 1.3; }
+.profileChoiceDefault { cursor: default; }
+.onboardingPage { background: radial-gradient(circle at 50% 30%, var(--color-bg-glow), transparent 28rem), var(--color-bg); }
+.onboardingPanel { width: min(92vw, 460px); padding: 42px; text-align: center; }
+.onboardingPanel > img { width: 46px; height: 46px; margin-bottom: 20px; filter: drop-shadow(0 0 12px var(--color-accent-soft)); }
+.onboardingPanel .authPanelMeta { justify-content: center; }.onboardingPanel h1 { margin: 13px 0 10px; font-size: 27px; }.onboardingPanel p { margin: 0 0 24px; color: var(--color-muted); line-height: 1.6; }
+.onboardingPulse { width: 10px; height: 10px; margin: 0 auto; display: block; border-radius: 50%; background: var(--color-accent); box-shadow: 0 0 0 0 var(--color-accent-soft); animation: onboarding-pulse 1.15s ease-out infinite; }
+@keyframes onboarding-pulse { 70% { box-shadow: 0 0 0 16px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 .authFooter { min-height: 48px; position: relative; z-index: 1; display: flex; align-items: center; padding: 14px 22px; border-top: 1px solid var(--color-border); color: var(--color-muted); font: 650 9px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .1em; }
 
 @media (max-width: 760px) {
@@ -65,4 +79,6 @@
   .authHero h1 { font-size: 29px; }
   .authPanel { margin: 0 10px 16px; padding: 24px 18px; }
   .authFooter { padding: 14px 16px; }
+  .registrationProfiles { grid-template-columns: 1fr; }
+  .onboardingPanel { padding: 34px 22px; border-radius: 0; }
 }

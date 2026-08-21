@@ -11,17 +11,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.conversations import (
     append_message,
-    create_personal_thread,
-    ensure_personal_thread,
-    list_personal_threads,
+    create_profile_thread,
+    ensure_profile_context,
+    list_profile_threads,
     load_messages,
-    require_personal_thread,
+    require_profile_thread,
 )
 from app.database import get_database_session, get_session_factory
 from app.hermes import HermesAdapter, HermesError
 from app.identity import (
     OidcTokenVerifier,
+    ZitadelProvisioningError,
+    ZitadelRoleProvisioner,
+    get_external_subject,
     get_platform_user,
+    get_user_profiles,
     set_user_theme,
     synchronize_user,
 )
@@ -80,6 +84,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(min_length=1, max_length=50)
     thread_id: UUID | None = None
+    profile: Literal["personal", "work"] = "personal"
 
 
 class ChatResponse(BaseModel):
@@ -98,6 +103,24 @@ class ChatThread(BaseModel):
     title: str
 
 
+class ChatThreadCreate(BaseModel):
+    profile: Literal["personal", "work"]
+
+
+class ChatProfile(BaseModel):
+    key: Literal["personal", "work"]
+    label: str
+
+
+class RegistrationProfilesRequest(BaseModel):
+    include_work: bool = False
+
+
+class RegistrationProfilesResponse(BaseModel):
+    roles: list[str]
+    refresh_login: bool = True
+
+
 def require_platform_user_id(value: str | None) -> UUID:
     if not value:
         raise HTTPException(status_code=401, detail="Authenticated platform user required")
@@ -105,6 +128,35 @@ def require_platform_user_id(value: str | None) -> UUID:
         return UUID(value)
     except ValueError as exc:
         raise HTTPException(status_code=401, detail="Invalid platform user") from exc
+
+
+def get_role_provisioner() -> ZitadelRoleProvisioner:
+    return ZitadelRoleProvisioner.from_environment()
+
+
+@app.post(
+    "/api/auth/registration-profiles",
+    response_model=RegistrationProfilesResponse,
+    tags=["auth"],
+)
+async def assign_registration_profiles(
+    request: RegistrationProfilesRequest,
+    x_skavan_user_id: str | None = Header(default=None),
+    session: AsyncSession = Depends(get_database_session),
+    provisioner: ZitadelRoleProvisioner = Depends(get_role_provisioner),
+) -> RegistrationProfilesResponse:
+    user_id = require_platform_user_id(x_skavan_user_id)
+    subject = await get_external_subject(session, user_id)
+    if subject is None:
+        raise HTTPException(status_code=404, detail="Identity account not found")
+    try:
+        await provisioner.assign_registration_roles(subject, request.include_work)
+    except ZitadelProvisioningError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    roles = ["profile.personal"]
+    if request.include_work:
+        roles.append("profile.work")
+    return RegistrationProfilesResponse(roles=roles)
 
 
 @app.get("/api/users/me", response_model=PlatformUser, tags=["users"])
@@ -132,38 +184,61 @@ async def update_theme_preference(
     return PlatformUser.model_validate(user)
 
 
+async def require_profile_access(
+    session: AsyncSession, user_id: UUID, profile: str,
+) -> None:
+    if profile not in await get_user_profiles(session, user_id):
+        raise HTTPException(status_code=403, detail="Profile access denied")
+
+
+@app.get("/api/chat/profiles", response_model=list[ChatProfile], tags=["chat"])
+async def chat_profiles(
+    x_skavan_user_id: str | None = Header(default=None),
+) -> list[ChatProfile]:
+    user_id = require_platform_user_id(x_skavan_user_id)
+    async with get_session_factory()() as session:
+        profiles = await get_user_profiles(session, user_id)
+    return [ChatProfile(key=key, label=key.title()) for key in profiles]
+
+
 @app.get("/api/chat/threads", response_model=list[ChatThread], tags=["chat"])
 async def chat_threads(
+    profile: Literal["personal", "work"] = "personal",
     x_skavan_user_id: str | None = Header(default=None),
 ) -> list[ChatThread]:
     user_id = require_platform_user_id(x_skavan_user_id)
     async with get_session_factory()() as session:
-        await ensure_personal_thread(session, user_id)
-        stored = await list_personal_threads(session, user_id)
+        await require_profile_access(session, user_id, profile)
+        await ensure_profile_context(session, user_id, profile)
+        stored = await list_profile_threads(session, profile)
     return [ChatThread.model_validate(item) for item in stored]
 
 
 @app.post("/api/chat/threads", response_model=ChatThread, tags=["chat"])
 async def new_chat_thread(
+    request: ChatThreadCreate,
     x_skavan_user_id: str | None = Header(default=None),
 ) -> ChatThread:
     user_id = require_platform_user_id(x_skavan_user_id)
     async with get_session_factory()() as session:
-        await ensure_personal_thread(session, user_id)
-        stored = await create_personal_thread(session, user_id)
+        await require_profile_access(session, user_id, request.profile)
+        await ensure_profile_context(session, user_id, request.profile)
+        stored = await create_profile_thread(session, user_id, request.profile)
     return ChatThread.model_validate(stored)
 
 
 @app.get("/api/chat/history", response_model=list[StoredChatMessage], tags=["chat"])
 async def chat_history(
+    profile: Literal["personal", "work"] = "personal",
     thread_id: UUID | None = None,
     x_skavan_user_id: str | None = Header(default=None),
 ) -> list[StoredChatMessage]:
     user_id = require_platform_user_id(x_skavan_user_id)
     async with get_session_factory()() as session:
-        resolved_thread_id = await ensure_personal_thread(session, user_id) if thread_id is None else thread_id
+        await require_profile_access(session, user_id, profile)
+        resolved_thread_id = await ensure_profile_context(session, user_id, profile) if thread_id is None else thread_id
         try:
-            await require_personal_thread(session, user_id, resolved_thread_id)
+            await require_profile_thread(session, profile, resolved_thread_id)
         except ValueError as exc:
             raise HTTPException(status_code=404, detail="Thread not found") from exc
         stored = await load_messages(session, resolved_thread_id)
@@ -196,10 +271,13 @@ async def chat(
     hermes: HermesAdapter = Depends(get_hermes_adapter),
 ) -> ChatResponse:
     user_id = require_platform_user_id(x_skavan_user_id)
+    async with get_session_factory()() as session:
+        await require_profile_access(session, user_id, request.profile)
     try:
         content = await hermes.complete(
             [message.model_dump() for message in request.messages],
-            session_key=f"skavan:user:{user_id}",
+            session_key=f"skavan:profile:{request.profile}",
+            profile=request.profile,
         )
     except HermesError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -221,9 +299,10 @@ async def stream_chat(
     if latest.role != "user":
         raise HTTPException(status_code=400, detail="The latest message must be from the user")
     async with get_session_factory()() as session:
-        thread_id = await ensure_personal_thread(session, user_id) if request.thread_id is None else request.thread_id
+        await require_profile_access(session, user_id, request.profile)
+        thread_id = await ensure_profile_context(session, user_id, request.profile) if request.thread_id is None else request.thread_id
         try:
-            await require_personal_thread(session, user_id, thread_id)
+            await require_profile_thread(session, request.profile, thread_id)
         except ValueError as exc:
             raise HTTPException(status_code=404, detail="Thread not found") from exc
         await append_message(
@@ -240,7 +319,8 @@ async def stream_chat(
         try:
             async for content in hermes.stream(
                 hermes_messages,
-                session_key=f"skavan:user:{user_id}",
+                session_key=f"skavan:profile:{request.profile}",
+                profile=request.profile,
             ):
                 assistant_content.append(content)
                 yield format_sse("token", {"content": content})

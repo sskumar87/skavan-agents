@@ -5,6 +5,7 @@ import os
 from dataclasses import dataclass
 from collections.abc import AsyncIterator
 from typing import Any
+from urllib.parse import quote
 
 import httpx2
 
@@ -18,6 +19,8 @@ class HermesAdapter:
     base_url: str
     api_key: str
     model: str = "hermes-agent"
+    personal_api_key: str = ""
+    work_api_key: str = ""
 
     @classmethod
     def from_environment(cls) -> "HermesAdapter":
@@ -25,6 +28,8 @@ class HermesAdapter:
             base_url=os.getenv("HERMES_API_BASE_URL", "http://hermes:8642").rstrip("/"),
             api_key=os.getenv("HERMES_API_SERVER_KEY", ""),
             model=os.getenv("HERMES_MODEL", "hermes-agent"),
+            personal_api_key=os.getenv("HERMES_PERSONAL_API_SERVER_KEY", ""),
+            work_api_key=os.getenv("HERMES_WORK_API_SERVER_KEY", ""),
         )
 
     @property
@@ -33,11 +38,23 @@ class HermesAdapter:
             raise HermesError("Hermes is not configured.")
         return {"Authorization": f"Bearer {self.api_key}"}
 
-    def request_headers(self, session_key: str | None = None) -> dict[str, str]:
-        headers = self.headers
+    def request_headers(
+        self, session_key: str | None = None, profile: str | None = None,
+    ) -> dict[str, str]:
+        api_key = {
+            "personal": self.personal_api_key,
+            "work": self.work_api_key,
+        }.get(profile, self.api_key)
+        if len(api_key) < 16:
+            raise HermesError("Hermes profile is not configured.")
+        headers = {"Authorization": f"Bearer {api_key}"}
         if session_key:
             headers["X-Hermes-Session-Key"] = session_key
         return headers
+
+    def endpoint(self, path: str, profile: str | None = None) -> str:
+        prefix = f"/p/{quote(profile, safe='')}" if profile else ""
+        return f"{self.base_url}{prefix}{path}"
 
     async def health(self) -> bool:
         try:
@@ -52,6 +69,7 @@ class HermesAdapter:
         messages: list[dict[str, str]],
         *,
         session_key: str | None = None,
+        profile: str | None = None,
     ) -> str:
         payload = {
             "model": self.model,
@@ -61,8 +79,8 @@ class HermesAdapter:
         try:
             async with httpx2.AsyncClient(timeout=300.0) as client:
                 response = await client.post(
-                    f"{self.base_url}/v1/chat/completions",
-                    headers=self.request_headers(session_key),
+                    self.endpoint("/v1/chat/completions", profile),
+                    headers=self.request_headers(session_key, profile),
                     json=payload,
                 )
             response.raise_for_status()
@@ -83,6 +101,7 @@ class HermesAdapter:
         messages: list[dict[str, str]],
         *,
         session_key: str,
+        profile: str,
     ) -> AsyncIterator[str]:
         payload = {
             "model": self.model,
@@ -95,8 +114,8 @@ class HermesAdapter:
             async with httpx2.AsyncClient(timeout=300.0) as client:
                 async with client.stream(
                     "POST",
-                    f"{self.base_url}/v1/chat/completions",
-                    headers=self.request_headers(session_key),
+                    self.endpoint("/v1/chat/completions", profile),
+                    headers=self.request_headers(session_key, profile),
                     json=payload,
                 ) as response:
                     response.raise_for_status()

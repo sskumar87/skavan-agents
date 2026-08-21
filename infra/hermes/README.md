@@ -14,6 +14,15 @@ server key. The database prompt stores the existing `skavan_app` credential as
 a URL-encoded asyncpg connection URL without displaying it. Open
 `http://127.0.0.1:8080` after all four containers are healthy.
 
+## Shared Personal and Work profiles
+
+For an existing Phase 1 installation, run `configure-shared-profiles.ps1`
+once. It copies Hermes state into the dedicated `hermes` subdirectory,
+deliberately excludes the platform `.env` and ZITADEL files, creates Personal
+and Work profile configurations, enables the multiplex allowlist, and stores
+distinct profile API keys in the protected Phase 1 environment file. It does
+not restart containers or delete the original data.
+
 Stop the Phase 1 stack without deleting Hermes state:
 
 ```powershell

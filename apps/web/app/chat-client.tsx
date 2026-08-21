@@ -15,6 +15,8 @@ type StoredChatMessage = Omit<ChatMessage, "isCurrentUser" | "authorName"> & {
 };
 type StreamEvent = { event: string; data: Record<string, unknown> };
 type ChatThread = { id: string; title: string };
+type ProfileKey = "personal" | "work";
+type ChatProfile = { key: ProfileKey; label: string };
 type ThemeName = "neon-grid" | "violet-pulse" | "amber-terminal" | "daylight-circuit";
 
 const themes: { value: ThemeName; label: string }[] = [
@@ -47,6 +49,8 @@ function parseStreamEvent(block: string): StreamEvent | null {
 export function ChatClient({ account, userName }: { account: ReactNode; userName: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [threads, setThreads] = useState<ChatThread[]>([]);
+  const [profiles, setProfiles] = useState<ChatProfile[]>([]);
+  const [selectedProfile, setSelectedProfile] = useState<ProfileKey | null>(null);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [prompt, setPrompt] = useState("");
@@ -145,7 +149,36 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
   }
 
   useEffect(() => {
-    fetch("/bff/chat/threads", { cache: "no-store" })
+    fetch("/bff/chat/profiles", { cache: "no-store" })
+      .then(async (response) => {
+        if (response.status === 401) {
+          window.location.assign("/login");
+          return [];
+        }
+        if (!response.ok) throw new Error("Unable to load profile roles");
+        return response.json() as Promise<ChatProfile[]>;
+      })
+      .then((items) => {
+        setProfiles(items);
+        setSelectedProfile(items[0]?.key ?? null);
+        if (!items.length) {
+          setError("No Personal or Work role is present in your login token.");
+          setIsLoadingHistory(false);
+        }
+      })
+      .catch(() => {
+        setError("Profile roles could not be loaded.");
+        setIsLoadingHistory(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!selectedProfile) return;
+    setIsLoadingHistory(true);
+    setThreads([]);
+    setSelectedThreadId(null);
+    setMessages(initialMessages);
+    fetch(`/bff/chat/threads?profile=${encodeURIComponent(selectedProfile)}`, { cache: "no-store" })
       .then(async (response) => {
         if (response.status === 401) {
           window.location.assign("/login");
@@ -163,12 +196,12 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
         setError("Threads could not be loaded.");
         setIsLoadingHistory(false);
       });
-  }, []);
+  }, [selectedProfile]);
 
   useEffect(() => {
-    if (!selectedThreadId) return;
+    if (!selectedThreadId || !selectedProfile) return;
     setIsLoadingHistory(true);
-    fetch(`/bff/chat/history?thread_id=${encodeURIComponent(selectedThreadId)}`, { cache: "no-store" })
+    fetch(`/bff/chat/history?profile=${encodeURIComponent(selectedProfile)}&thread_id=${encodeURIComponent(selectedThreadId)}`, { cache: "no-store" })
       .then(async (response) => {
         if (response.status === 401) {
           window.location.assign("/login");
@@ -187,12 +220,17 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
       .then((history) => setMessages(history.length ? history : initialMessages))
       .catch(() => setError("Chat history could not be loaded."))
       .finally(() => setIsLoadingHistory(false));
-  }, [selectedThreadId]);
+  }, [selectedProfile, selectedThreadId]);
 
   async function createThread() {
     setError(null);
     try {
-      const response = await fetch("/bff/chat/threads", { method: "POST" });
+      if (!selectedProfile) throw new Error("Choose a profile first");
+      const response = await fetch("/bff/chat/threads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile: selectedProfile }),
+      });
       if (!response.ok) throw new Error("Unable to create a new chat");
       const thread = await response.json() as ChatThread;
       setThreads((current) => [thread, ...current]);
@@ -233,6 +271,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
         body: JSON.stringify({
           messages: [{ role: "user", content: message }],
           thread_id: selectedThreadId,
+          profile: selectedProfile,
         }),
       });
       if (response.status === 401) {
@@ -292,10 +331,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           <span>SKAV PLATFORM</span>
         </a>
         <nav className="primaryNavigation" aria-label="Primary navigation">
-          <button type="button" className="active" aria-current="page"><NavIcon kind="user" />Personal</button>
-          <button type="button" disabled title="Groups are the next development slice"><NavIcon kind="groups" />Groups</button>
-          <button type="button" disabled title="Approvals are planned for V1"><NavIcon kind="shield" />Approvals</button>
-          <button type="button" disabled title="Connections are planned for V1"><NavIcon kind="link" />Connections</button>
+          <button type="button" className="active" aria-current="page"><NavIcon kind="user" />Chats</button>
           <button type="button" disabled title="Settings are coming next"><NavIcon kind="settings" />Settings</button>
         </nav>
       </aside>
@@ -308,8 +344,8 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           aria-expanded={isThreadDrawerOpen}
           onClick={() => setIsThreadDrawerOpen(true)}
         >‹</button>
-        <div className="workspaceSearch" aria-label="Search is coming in the groups slice">
-          <NavIcon kind="search" /><span>Search across your groups...</span><kbd>⌘ K</kbd>
+        <div className="workspaceSearch" aria-label="Search chats">
+          <NavIcon kind="search" /><span>Search chats...</span><kbd>⌘ K</kbd>
         </div>
         <div className="workspaceActions">
           <button
@@ -344,13 +380,23 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
       </header>
 
       <aside className="threadRail">
-        <div className="workspaceIdentity"><strong>Personal</strong><span>Private workspace</span></div>
+        <div className="workspaceIdentity">
+          <strong>{profiles.find((item) => item.key === selectedProfile)?.label ?? "Profile"}</strong>
+          <span>Shared Hermes workspace</span>
+        </div>
+        {profiles.length > 1 && (
+          <div className="profileSwitcher" role="group" aria-label="Active profile">
+            {profiles.map((profile) => (
+              <button key={profile.key} type="button" aria-pressed={selectedProfile === profile.key} onClick={() => setSelectedProfile(profile.key)}>{profile.label}</button>
+            ))}
+          </div>
+        )}
         <button className="newThreadButton" type="button" onClick={createThread}>＋ New chat</button>
         <div className="threadList" aria-label="Threads">
           {threads.map((thread) => (
             <button className={`threadItem ${thread.id === selectedThreadId ? "active" : ""}`} type="button" key={thread.id} onClick={() => selectThread(thread.id)}>
               <span className="threadGlyph">◇</span>
-              <span><strong>{thread.title}</strong><small>Your private Hermes thread</small></span>
+              <span><strong>{thread.title}</strong><small>Shared {selectedProfile} chat</small></span>
             </button>
           ))}
         </div>
@@ -358,7 +404,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
 
       <section className="conversationPane" aria-label="Chat with Hermes">
         <header className="conversationHeader">
-          <div><h1>{threads.find((thread) => thread.id === selectedThreadId)?.title ?? "General"}</h1><p>Personal</p></div>
+          <div><h1>{threads.find((thread) => thread.id === selectedThreadId)?.title ?? "General"}</h1><p>{profiles.find((item) => item.key === selectedProfile)?.label ?? "Profile"}</p></div>
           <div className={`status ${hermesStatus}`} aria-label={`Hermes ${hermesStatus}`}>
             <span className="statusDot" aria-hidden="true" />Hermes {hermesStatus}
           </div>
@@ -422,15 +468,15 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
         <section className="contextSection">
           <span className="contextLabel">Signed in user</span>
           <div className="contextUser"><span>{userName.slice(0, 1).toUpperCase()}</span><div><strong>{userName}</strong><small>Immutable identity</small></div></div>
-          <div className="contextRow"><span>Role</span><strong>Owner</strong></div>
+          <div className="contextRow"><span>Access</span><strong>Profile member</strong></div>
         </section>
         <section className="contextSection">
-          <span className="contextLabel">Personal memory (private)</span>
-          <div className="contextFeature"><span>▤</span><div><strong>Personal</strong><small>Relevant personal memory only.<br />Thread history stays separate.</small></div></div>
+          <span className="contextLabel">Profile memory (shared)</span>
+          <div className="contextFeature"><span>▤</span><div><strong>{profiles.find((item) => item.key === selectedProfile)?.label ?? "Profile"}</strong><small>USER.md and MEMORY.md are shared<br />with everyone in this profile.</small></div></div>
         </section>
         <section className="contextSection">
           <span className="contextLabel">Selected agent</span>
-          <div className="contextFeature"><span>H</span><div><strong>Hermes</strong><small>Personal assistant</small></div><i className="onlineMark" /></div>
+          <div className="contextFeature"><span>H</span><div><strong>Hermes</strong><small>{selectedProfile === "work" ? "Work profile" : "Personal profile"}</small></div><i className="onlineMark" /></div>
         </section>
         <section className="contextSection capabilities">
           <span className="contextLabel">Available now</span>
@@ -443,15 +489,22 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           <div className="threadDrawerBackdrop open" onClick={() => setIsThreadDrawerOpen(false)} />
           <aside className="threadDrawer open" aria-label="Thread navigation">
             <div className="threadDrawerHeader">
-              <div><strong>Personal</strong><span>Private workspace</span></div>
+              <div><strong>{profiles.find((item) => item.key === selectedProfile)?.label ?? "Profile"}</strong><span>Shared Hermes workspace</span></div>
               <button type="button" onClick={() => setIsThreadDrawerOpen(false)} aria-label="Close threads">×</button>
             </div>
+            {profiles.length > 1 && (
+              <div className="profileSwitcher" role="group" aria-label="Active profile">
+                {profiles.map((profile) => (
+                  <button key={profile.key} type="button" aria-pressed={selectedProfile === profile.key} onClick={() => setSelectedProfile(profile.key)}>{profile.label}</button>
+                ))}
+              </div>
+            )}
             <button className="newThreadButton" type="button" onClick={createThread}>＋ New chat</button>
             <div className="threadList" aria-label="Threads">
               {threads.map((thread) => (
                 <button className={`threadItem ${thread.id === selectedThreadId ? "active" : ""}`} type="button" key={thread.id} onClick={() => selectThread(thread.id)}>
                   <span className="threadGlyph">◇</span>
-                  <span><strong>{thread.title}</strong><small>Your private Hermes thread</small></span>
+                  <span><strong>{thread.title}</strong><small>Shared {selectedProfile} chat</small></span>
                 </button>
               ))}
             </div>
@@ -460,9 +513,8 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
       )}
 
       <nav className="mobileNavigation" aria-label="Mobile navigation">
-        <button type="button" className="active" aria-current="page"><NavIcon kind="user" /><span>Home</span></button>
-        <button type="button" disabled><NavIcon kind="groups" /><span>Groups</span></button>
-        <button type="button" disabled><NavIcon kind="shield" /><span>Approvals</span></button>
+        <button type="button" className="active" aria-current="page"><NavIcon kind="user" /><span>Chats</span></button>
+        <button type="button" disabled><NavIcon kind="groups" /><span>Profiles</span></button>
         <button type="button" disabled><NavIcon kind="settings" /><span>Settings</span></button>
       </nav>
     </main>

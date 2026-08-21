@@ -1,7 +1,18 @@
 from fastapi.testclient import TestClient
 
 import app.main as main
-from app.identity import VerifiedIdentity
+from app.identity import PROFILE_ROLE_CLAIM, VerifiedIdentity, profiles_from_claims
+
+
+def test_profile_roles_are_derived_only_from_zitadel_claims() -> None:
+    assert profiles_from_claims({
+        PROFILE_ROLE_CLAIM: {
+            "profile.work": {"example-org": "Example"},
+            "unrelated.admin": {"example-org": "Example"},
+            "profile.personal": {"example-org": "Example"},
+        }
+    }) == ["personal", "work"]
+    assert profiles_from_claims({}) == []
 
 
 class FakeVerifier:
@@ -43,6 +54,40 @@ def test_sync_requires_bearer_token(monkeypatch) -> None:
         assert response.status_code == 401
     finally:
         main.app.dependency_overrides.clear()
+
+
+class FakeProvisioner:
+    def __init__(self) -> None:
+        self.assignment: tuple[str, bool] | None = None
+
+    async def assign_registration_roles(self, subject: str, include_work: bool) -> None:
+        self.assignment = (subject, include_work)
+
+
+def test_registration_profiles_assigns_only_fixed_zitadel_roles(monkeypatch) -> None:
+    provisioner = FakeProvisioner()
+
+    async def fake_subject(session, user_id):
+        return "immutable-subject"
+
+    main.app.dependency_overrides[main.get_database_session] = fake_session
+    main.app.dependency_overrides[main.get_role_provisioner] = lambda: provisioner
+    monkeypatch.setattr(main, "get_external_subject", fake_subject)
+    try:
+        response = TestClient(main.app).post(
+            "/api/auth/registration-profiles",
+            json={"include_work": True},
+            headers={"X-Skavan-User-Id": "d34ab70c-4cec-4361-86b2-e3b8c97241ec"},
+        )
+    finally:
+        main.app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "roles": ["profile.personal", "profile.work"],
+        "refresh_login": True,
+    }
+    assert provisioner.assignment == ("immutable-subject", True)
 
 
 def test_sync_returns_canonical_platform_user(monkeypatch) -> None:

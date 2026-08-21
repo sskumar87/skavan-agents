@@ -13,9 +13,11 @@ export async function GET(request: Request) {
 
   try {
     const threadId = new URL(request.url).searchParams.get("thread_id");
-    const query = threadId ? `?thread_id=${encodeURIComponent(threadId)}` : "";
+    const profile = new URL(request.url).searchParams.get("profile") ?? "personal";
+    const params = new URLSearchParams({ profile });
+    if (threadId) params.set("thread_id", threadId);
     const upstream = await fetch(
-      `${process.env.API_BASE_URL ?? "http://127.0.0.1:8000"}/api/chat/history${query}`,
+      `${process.env.API_BASE_URL ?? "http://127.0.0.1:8000"}/api/chat/history?${params}`,
       {
         headers: { "X-Skavan-User-Id": platformUserId },
         cache: "no-store",

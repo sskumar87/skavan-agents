@@ -3,12 +3,27 @@ import Zitadel from "next-auth/providers/zitadel";
 
 const issuer = process.env.ZITADEL_ISSUER_URL ?? "https://zitadel.invalid";
 const clientId = process.env.ZITADEL_CLIENT_ID ?? "zitadel-client-not-configured";
+const profileRoleClaim = "urn:zitadel:iam:org:project:roles";
+
+function profileRolesFromClaims(profile: Record<string, unknown> | undefined) {
+  const claim = profile?.[profileRoleClaim];
+  const names = claim && typeof claim === "object" ? Object.keys(claim) : [];
+  return names.filter((name) => name === "profile.personal" || name === "profile.work");
+}
 
 type PlatformUser = {
   id: string;
   given_name?: string | null;
   preferences: Record<string, unknown>;
 };
+
+function roleKeysFromPreferences(preferences: Record<string, unknown>) {
+  const profiles = preferences.profile_roles;
+  if (!Array.isArray(profiles)) return [];
+  return profiles.flatMap((profile) => profile === "personal"
+    ? ["profile.personal"]
+    : profile === "work" ? ["profile.work"] : []);
+}
 
 async function synchronizePlatformUser(idToken: string): Promise<PlatformUser> {
   const response = await fetch(
@@ -63,18 +78,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       checks: ["pkce", "state"],
       authorization: {
-        params: { scope: "openid profile email" },
+        params: { scope: `openid profile email ${profileRoleClaim}` },
       },
     }),
   ],
   callbacks: {
     async jwt({ token, profile, account }) {
       if (profile?.sub) token.externalSubject = profile.sub;
+      if (profile) token.profileRoles = profileRolesFromClaims(profile as Record<string, unknown>);
       if (account?.id_token) {
         const platformUser = await synchronizePlatformUser(account.id_token);
         token.platformUserId = platformUser.id;
         token.platformGivenName = platformUser.given_name ?? undefined;
         token.userPreferences = platformUser.preferences;
+        token.profileRoles = roleKeysFromPreferences(platformUser.preferences);
       }
       return token;
     },
@@ -86,6 +103,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id: String(token.externalSubject ?? token.sub ?? ""),
           platformUserId: String(token.platformUserId ?? ""),
           preferences: token.userPreferences ?? {},
+          roles: token.profileRoles ?? [],
           name: typeof token.platformGivenName === "string"
             ? token.platformGivenName
             : session.user.name,

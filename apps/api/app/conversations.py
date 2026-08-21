@@ -7,6 +7,8 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
+PROFILE_KEYS = {"personal", "work"}
+
 group_role = Enum("OWNER", "ADMIN", "MEMBER", "VIEWER", name="group_role")
 groups = table(
     "groups",
@@ -46,6 +48,81 @@ def personal_context_ids(user_id: UUID) -> tuple[UUID, UUID, UUID]:
     membership_id = uuid5(NAMESPACE_URL, f"skavan:user:{user_id}:personal-membership")
     thread_id = uuid5(NAMESPACE_URL, f"skavan:user:{user_id}:personal-thread")
     return group_id, membership_id, thread_id
+
+
+def profile_context_ids(profile: str) -> tuple[UUID, UUID]:
+    if profile not in PROFILE_KEYS:
+        raise ValueError("Unknown profile")
+    group_id = uuid5(NAMESPACE_URL, f"skavan:profile:{profile}:workspace")
+    thread_id = uuid5(NAMESPACE_URL, f"skavan:profile:{profile}:general-thread")
+    return group_id, thread_id
+
+
+async def ensure_profile_context(session: AsyncSession, user_id: UUID, profile: str) -> UUID:
+    group_id, thread_id = profile_context_ids(profile)
+    now = datetime.now(timezone.utc)
+    display_name = profile.title()
+    await session.execute(
+        insert(groups).values(
+            id=group_id, name=display_name,
+            description=f"Shared {display_name} Hermes profile workspace",
+            created_by=user_id,
+            settings={"kind": "hermes_profile", "profile": profile},
+            created_at=now, updated_at=now,
+        ).on_conflict_do_nothing(index_elements=[groups.c.id])
+    )
+    await session.execute(
+        insert(threads).values(
+            id=thread_id, group_id=group_id, title="General", created_by=user_id,
+            archived_at=None, created_at=now, updated_at=now,
+        ).on_conflict_do_nothing(index_elements=[threads.c.id])
+    )
+    await session.commit()
+    return thread_id
+
+
+async def list_profile_threads(session: AsyncSession, profile: str) -> list[dict[str, str]]:
+    group_id, _ = profile_context_ids(profile)
+    rows = (
+        await session.execute(
+            select(threads.c.id, threads.c.title)
+            .where(threads.c.group_id == group_id, threads.c.archived_at.is_(None))
+            .order_by(threads.c.created_at.desc())
+        )
+    ).all()
+    return [{"id": str(row.id), "title": row.title} for row in rows]
+
+
+async def create_profile_thread(
+    session: AsyncSession, user_id: UUID, profile: str,
+) -> dict[str, str]:
+    group_id, _ = profile_context_ids(profile)
+    thread_id = uuid4()
+    now = datetime.now(timezone.utc)
+    await session.execute(
+        insert(threads).values(
+            id=thread_id, group_id=group_id, title="New chat", created_by=user_id,
+            archived_at=None, created_at=now, updated_at=now,
+        )
+    )
+    await session.commit()
+    return {"id": str(thread_id), "title": "New chat"}
+
+
+async def require_profile_thread(session: AsyncSession, profile: str, thread_id: UUID) -> UUID:
+    group_id, _ = profile_context_ids(profile)
+    found = (
+        await session.execute(
+            select(threads.c.id).where(
+                threads.c.id == thread_id,
+                threads.c.group_id == group_id,
+                threads.c.archived_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if found is None:
+        raise ValueError("Thread not found")
+    return found
 
 
 async def ensure_personal_thread(session: AsyncSession, user_id: UUID) -> UUID:

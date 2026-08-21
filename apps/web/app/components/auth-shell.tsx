@@ -86,6 +86,23 @@ export function AuthShell({ configured, signInAction, registerAction }: AuthShel
                       required
                     />
                   </label>
+                  <fieldset className="registrationProfiles">
+                    <legend>Choose your profiles</legend>
+                    <label className="profileChoice profileChoiceDefault">
+                      <input type="checkbox" checked disabled />
+                      <span>
+                        <strong>Personal</strong>
+                        <small>Included by default</small>
+                      </span>
+                    </label>
+                    <label className="profileChoice">
+                      <input type="checkbox" name="work" />
+                      <span>
+                        <strong>Work</strong>
+                        <small>Add the shared work context</small>
+                      </span>
+                    </label>
+                  </fieldset>
                   <button className="uiPrimaryAction" type="submit">Create account <ArrowIcon /></button>
                 </form>
               )
