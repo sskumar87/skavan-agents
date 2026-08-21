@@ -30,7 +30,7 @@ function ConvertTo-PlainText([Security.SecureString]$Value) {
 }
 
 function Set-EnvironmentValue([string]$Path, [string]$Name, [string]$Value) {
-    $lines = if (Test-Path -LiteralPath $Path) { [Collections.Generic.List[string]](Get-Content -LiteralPath $Path) } else { [Collections.Generic.List[string]]::new() }
+    $lines = if (Test-Path -LiteralPath $Path) { @(Get-Content -LiteralPath $Path) } else { @() }
     $replacement = "$Name=$Value"
     $found = $false
 
@@ -41,7 +41,7 @@ function Set-EnvironmentValue([string]$Path, [string]$Name, [string]$Value) {
         }
     }
 
-    if (-not $found) { $lines.Add($replacement) }
+    if (-not $found) { $lines += $replacement }
     Set-Content -LiteralPath $Path -Value $lines -Encoding utf8
 }
 
