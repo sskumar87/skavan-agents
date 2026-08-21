@@ -70,7 +70,7 @@ For Hermes, verify the exact release's private API binding, persistent state, pr
 1. Record release SHA and take a verified Laptop 1 backup.
 2. Validate private PostgreSQL reachability and review current/target Alembic revisions.
 3. Start reverse proxy, web and API; enable verified ZITADEL/Hermes only after their gates are complete.
-4. Run Alembic as a one-off release operation against the product DB. Apply forward only; record resulting revision. Never autogenerate or casually downgrade production schema.
+4. Using the database superuser, enable `vector` once in the target database if it is not already installed. Then run Alembic as a separate, restricted migration role. Apply forward only; record resulting revision. Never autogenerate or casually downgrade production schema.
 5. Complete ZITADEL client configuration, restart affected services, then enable Tunnel traffic.
 
 ## 9. Acceptance checklist

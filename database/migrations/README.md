@@ -32,7 +32,7 @@ Run the downgrade/upgrade cycle only against a disposable local database. Shared
 
 ## Required validation before merge
 
-1. Create a fresh disposable PostgreSQL database with the pgvector extension available. The migration role must be permitted to run `CREATE EXTENSION vector`; use a separate restricted runtime role in deployed environments.
+1. Create a fresh disposable PostgreSQL database with pgvector available. On the selected TimescaleDB image, enabling `vector` requires a PostgreSQL superuser: enable it once in the target database before the Alembic run, then use the separate restricted migration role for schema changes. The runtime role must remain restricted.
 2. Run `upgrade head`, `current`, and [`validate.sql`](validate.sql) with `psql`, for example: `psql "$env:POSTGRES_URL" -v ON_ERROR_STOP=1 -f database/migrations/validate.sql`.
 3. Run `alembic check`; it should report no model metadata changes until ORM metadata is introduced.
 4. Run the downgrade/upgrade cycle against the disposable database.

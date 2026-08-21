@@ -32,7 +32,6 @@ def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
 
     group_role = postgresql.ENUM("OWNER", "ADMIN", "MEMBER", "VIEWER", name="group_role")
-    group_role.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "users",
