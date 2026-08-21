@@ -25,6 +25,7 @@ This is the current execution ledger. It is updated when a component has been ve
 | Backups and recovery | Product and ZITADEL local backup schedules are templated. Install/verify both timers, then choose encrypted off-host destination, recovery-key custody and recovery objectives before production use. |
 | Laptop 2 deployment | Reviewed release tags and immutable multi-platform digests are recorded. Complete vendor-specific ZITADEL configuration and run Docker Compose/build validation on Laptop 2. |
 | Identity ingress | Choose app/auth hostnames and implement verified ZITADEL public OIDC routing while keeping administration private. |
+| Clean-machine CI | Workflow now checks API tests, web audit/type-check/build, full Compose profiles and both Docker images; first GitHub-hosted run is pending. |
 
 ## Not started
 
