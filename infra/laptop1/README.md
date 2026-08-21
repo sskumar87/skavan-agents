@@ -1,15 +1,17 @@
 # Laptop 1 operations
 
 These templates support the private data node. They are intentionally scoped to
-the Skavan product database (`skavan`) and never touch the existing `skav`
-database or its Redis services.
+the Skavan product (`skavan`) and identity (`zitadel`) databases and never touch
+the existing `skav` database or its Redis services.
 
 ## Local backup template
 
 `backup-skavan.sh` produces a PostgreSQL custom-format dump and SHA-256
-checksum on Laptop 1. It has no upload, retention deletion, encryption or
-restore-overwrite behavior. Those safeguards avoid silently choosing a cloud
-provider, recovery key or deletion policy for the operator.
+checksum for the database selected by `SKAVAN_DB_NAME`. It defaults to
+`skavan`; the separate ZITADEL service sets it to `zitadel`. The script has no
+upload, retention deletion, encryption or restore-overwrite behavior. Those
+safeguards avoid silently choosing a cloud provider, recovery key or deletion
+policy for the operator.
 
 ### Install on Laptop 1
 
@@ -17,11 +19,12 @@ provider, recovery key or deletion policy for the operator.
    create `/home/shyam/.local/share/skavan-backups` with mode `700`.
 2. Run it once manually as `shyam`. Check that it writes a `.dump` and matching
    `.sha256` file with mode `600`.
-3. Install the service/timer templates as
+3. Install the product service/timer templates as
    `/etc/systemd/system/skavan-backup.service` and
-   `/etc/systemd/system/skavan-backup.timer`; then enable the timer.
-4. Verify the timer with `systemctl list-timers skavan-backup.timer` and its
-   last result with `systemctl status skavan-backup.service`.
+   `/etc/systemd/system/skavan-backup.timer`. Install the ZITADEL pair as
+   `zitadel-backup.service` and `zitadel-backup.timer`; then enable both timers.
+4. Verify both timers with `systemctl list-timers` and inspect each service's
+   last result before relying on the schedule.
 
 Do not call this a complete production backup until the dump and checksum are
 encrypted and copied to an approved, access-controlled location outside Laptop

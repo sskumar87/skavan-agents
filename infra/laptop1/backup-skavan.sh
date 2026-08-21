@@ -24,6 +24,11 @@ require_command flock
 require_command sha256sum
 require_command date
 
+if [[ ! "$DATABASE_NAME" =~ ^[a-zA-Z0-9_]+$ ]]; then
+  echo "Unsafe database name: $DATABASE_NAME" >&2
+  exit 1
+fi
+
 mkdir -p "$BACKUP_DIR" "$(dirname "$LOCK_FILE")"
 
 exec 9>"$LOCK_FILE"
@@ -38,7 +43,7 @@ if ! docker inspect --format '{{.State.Running}}' "$CONTAINER_NAME" 2>/dev/null 
 fi
 
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
-backup_file="$BACKUP_DIR/skavan-$timestamp.dump"
+backup_file="$BACKUP_DIR/$DATABASE_NAME-$timestamp.dump"
 checksum_file="$backup_file.sha256"
 temporary_file="$backup_file.partial"
 
