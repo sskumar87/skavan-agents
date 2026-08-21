@@ -9,7 +9,14 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.conversations import append_message, ensure_personal_thread, load_messages
+from app.conversations import (
+    append_message,
+    create_personal_thread,
+    ensure_personal_thread,
+    list_personal_threads,
+    load_messages,
+    require_personal_thread,
+)
 from app.database import get_database_session, get_session_factory
 from app.hermes import HermesAdapter, HermesError
 from app.identity import (
@@ -72,6 +79,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(min_length=1, max_length=50)
+    thread_id: UUID | None = None
 
 
 class ChatResponse(BaseModel):
@@ -81,6 +89,13 @@ class ChatResponse(BaseModel):
 class StoredChatMessage(ChatMessage):
     id: str
     created_at: str
+    is_current_user: bool
+    author_name: str | None = None
+
+
+class ChatThread(BaseModel):
+    id: str
+    title: str
 
 
 def require_platform_user_id(value: str | None) -> UUID:
@@ -117,18 +132,47 @@ async def update_theme_preference(
     return PlatformUser.model_validate(user)
 
 
+@app.get("/api/chat/threads", response_model=list[ChatThread], tags=["chat"])
+async def chat_threads(
+    x_skavan_user_id: str | None = Header(default=None),
+) -> list[ChatThread]:
+    user_id = require_platform_user_id(x_skavan_user_id)
+    async with get_session_factory()() as session:
+        await ensure_personal_thread(session, user_id)
+        stored = await list_personal_threads(session, user_id)
+    return [ChatThread.model_validate(item) for item in stored]
+
+
+@app.post("/api/chat/threads", response_model=ChatThread, tags=["chat"])
+async def new_chat_thread(
+    x_skavan_user_id: str | None = Header(default=None),
+) -> ChatThread:
+    user_id = require_platform_user_id(x_skavan_user_id)
+    async with get_session_factory()() as session:
+        await ensure_personal_thread(session, user_id)
+        stored = await create_personal_thread(session, user_id)
+    return ChatThread.model_validate(stored)
+
+
 @app.get("/api/chat/history", response_model=list[StoredChatMessage], tags=["chat"])
 async def chat_history(
+    thread_id: UUID | None = None,
     x_skavan_user_id: str | None = Header(default=None),
 ) -> list[StoredChatMessage]:
     user_id = require_platform_user_id(x_skavan_user_id)
     async with get_session_factory()() as session:
-        thread_id = await ensure_personal_thread(session, user_id)
-        stored = await load_messages(session, thread_id)
+        resolved_thread_id = await ensure_personal_thread(session, user_id) if thread_id is None else thread_id
+        try:
+            await require_personal_thread(session, user_id, resolved_thread_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail="Thread not found") from exc
+        stored = await load_messages(session, resolved_thread_id)
     return [
         StoredChatMessage(
             id=item["id"], role=item["role"], content=item["content"],
             created_at=item["created_at"].isoformat(),
+            is_current_user=item.get("author_user_id") == str(user_id),
+            author_name=item.get("author_name"),
         )
         for item in stored
     ]
@@ -174,7 +218,11 @@ async def stream_chat(
     if latest.role != "user":
         raise HTTPException(status_code=400, detail="The latest message must be from the user")
     async with get_session_factory()() as session:
-        thread_id = await ensure_personal_thread(session, user_id)
+        thread_id = await ensure_personal_thread(session, user_id) if request.thread_id is None else request.thread_id
+        try:
+            await require_personal_thread(session, user_id, thread_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail="Thread not found") from exc
         await append_message(
             session, thread_id=thread_id, author_kind="USER",
             author_user_id=user_id, content=latest.content,

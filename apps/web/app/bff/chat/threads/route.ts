@@ -2,7 +2,7 @@ import { auth } from "../../../../auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
+async function proxy(method: "GET" | "POST") {
   const session = await auth();
   const platformUserId = session?.user && "platformUserId" in session.user
     ? String(session.user.platformUserId)
@@ -12,14 +12,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    const threadId = new URL(request.url).searchParams.get("thread_id");
-    const query = threadId ? `?thread_id=${encodeURIComponent(threadId)}` : "";
     const upstream = await fetch(
-      `${process.env.API_BASE_URL ?? "http://127.0.0.1:8000"}/api/chat/history${query}`,
-      {
-        headers: { "X-Skavan-User-Id": platformUserId },
-        cache: "no-store",
-      },
+      `${process.env.API_BASE_URL ?? "http://127.0.0.1:8000"}/api/chat/threads`,
+      { method, headers: { "X-Skavan-User-Id": platformUserId }, cache: "no-store" },
     );
     return new Response(upstream.body, {
       status: upstream.status,
@@ -29,3 +24,6 @@ export async function GET(request: Request) {
     return Response.json({ detail: "The platform API is unavailable" }, { status: 502 });
   }
 }
+
+export async function GET() { return proxy("GET"); }
+export async function POST() { return proxy("POST"); }

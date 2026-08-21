@@ -2,8 +2,19 @@
 
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 
-type ChatMessage = { id: string; role: "user" | "assistant"; content: string };
+type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  isCurrentUser?: boolean;
+  authorName?: string | null;
+};
+type StoredChatMessage = Omit<ChatMessage, "isCurrentUser" | "authorName"> & {
+  is_current_user: boolean;
+  author_name?: string | null;
+};
 type StreamEvent = { event: string; data: Record<string, unknown> };
+type ChatThread = { id: string; title: string };
 type ThemeName = "neon-grid" | "violet-pulse" | "amber-terminal" | "daylight-circuit";
 
 const themes: { value: ThemeName; label: string }[] = [
@@ -35,6 +46,8 @@ function parseStreamEvent(block: string): StreamEvent | null {
 
 export function ChatClient({ account, userName }: { account: ReactNode; userName: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [threads, setThreads] = useState<ChatThread[]>([]);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [prompt, setPrompt] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -132,19 +145,69 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
   }
 
   useEffect(() => {
-    fetch("/bff/chat/history", { cache: "no-store" })
+    fetch("/bff/chat/threads", { cache: "no-store" })
+      .then(async (response) => {
+        if (response.status === 401) {
+          window.location.assign("/login");
+          return [];
+        }
+        if (!response.ok) throw new Error("Unable to load threads");
+        return response.json() as Promise<ChatThread[]>;
+      })
+      .then((items) => {
+        setThreads(items);
+        setSelectedThreadId(items[0]?.id ?? null);
+        if (!items.length) setIsLoadingHistory(false);
+      })
+      .catch(() => {
+        setError("Threads could not be loaded.");
+        setIsLoadingHistory(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!selectedThreadId) return;
+    setIsLoadingHistory(true);
+    fetch(`/bff/chat/history?thread_id=${encodeURIComponent(selectedThreadId)}`, { cache: "no-store" })
       .then(async (response) => {
         if (response.status === 401) {
           window.location.assign("/login");
           return [];
         }
         if (!response.ok) throw new Error("Unable to load chat history");
-        return response.json() as Promise<ChatMessage[]>;
+        const history = await response.json() as StoredChatMessage[];
+        return history.map((message) => ({
+          id: message.id,
+          role: message.role,
+          content: message.content,
+          isCurrentUser: message.is_current_user,
+          authorName: message.author_name,
+        }));
       })
       .then((history) => setMessages(history.length ? history : initialMessages))
       .catch(() => setError("Chat history could not be loaded."))
       .finally(() => setIsLoadingHistory(false));
-  }, []);
+  }, [selectedThreadId]);
+
+  async function createThread() {
+    setError(null);
+    try {
+      const response = await fetch("/bff/chat/threads", { method: "POST" });
+      if (!response.ok) throw new Error("Unable to create a new chat");
+      const thread = await response.json() as ChatThread;
+      setThreads((current) => [thread, ...current]);
+      setSelectedThreadId(thread.id);
+      setMessages(initialMessages);
+      setIsThreadDrawerOpen(false);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to create a new chat.");
+    }
+  }
+
+  function selectThread(threadId: string) {
+    setSelectedThreadId(threadId);
+    setIsThreadDrawerOpen(false);
+  }
 
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -156,7 +219,10 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     setIsSending(true);
     setIsReceiving(false);
     followBottomRef.current = true;
-    const userMessage: ChatMessage = { id: crypto.randomUUID(), role: "user", content: message };
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(), role: "user", content: message,
+      isCurrentUser: true, authorName: userName,
+    };
     const conversation = [...messages, userMessage];
     setMessages(conversation);
 
@@ -166,6 +232,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [{ role: "user", content: message }],
+          thread_id: selectedThreadId,
         }),
       });
       if (response.status === 401) {
@@ -278,33 +345,40 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
 
       <aside className="threadRail">
         <div className="workspaceIdentity"><strong>Personal</strong><span>Private workspace</span></div>
-        <button className="newThreadButton" type="button" disabled title="Multiple threads are the next development slice">＋ New thread</button>
+        <button className="newThreadButton" type="button" onClick={createThread}>＋ New chat</button>
         <div className="threadList" aria-label="Threads">
-          <button className="threadItem active" type="button">
-            <span className="threadGlyph">◇</span>
-            <span><strong>General</strong><small>Your private Hermes thread</small></span>
-          </button>
+          {threads.map((thread) => (
+            <button className={`threadItem ${thread.id === selectedThreadId ? "active" : ""}`} type="button" key={thread.id} onClick={() => selectThread(thread.id)}>
+              <span className="threadGlyph">◇</span>
+              <span><strong>{thread.title}</strong><small>Your private Hermes thread</small></span>
+            </button>
+          ))}
         </div>
       </aside>
 
       <section className="conversationPane" aria-label="Chat with Hermes">
         <header className="conversationHeader">
-          <div><h1>General</h1><p>Personal</p></div>
+          <div><h1>{threads.find((thread) => thread.id === selectedThreadId)?.title ?? "General"}</h1><p>Personal</p></div>
           <div className={`status ${hermesStatus}`} aria-label={`Hermes ${hermesStatus}`}>
             <span className="statusDot" aria-hidden="true" />Hermes {hermesStatus}
           </div>
         </header>
         <div className="messages" aria-live="polite" ref={messagesRef} onScroll={updateScrollControls}>
           <div className="dayDivider"><span>Today</span></div>
-          {messages.map((message) => (
-            <article className={`message ${message.role}`} key={message.id}>
-              <span className="messageAvatar">{message.role === "assistant" ? "H" : userName.slice(0, 1).toUpperCase()}</span>
-              <div className="messageBody">
-                <div className="messageMeta">{message.role === "assistant" ? "Hermes · Agent" : userName}</div>
-                <p>{message.content}</p>
-              </div>
-            </article>
-          ))}
+          {messages.map((message) => {
+            const isAssistant = message.role === "assistant";
+            const isOwn = !isAssistant && (message.isCurrentUser ?? true);
+            const authorName = isAssistant ? "Hermes · Agent" : (message.authorName || (isOwn ? userName : "Group member"));
+            return (
+              <article className={`message ${isAssistant ? "assistant" : isOwn ? "user" : "participant"}`} key={message.id}>
+                <span className="messageAvatar">{isAssistant ? "H" : authorName.slice(0, 1).toUpperCase()}</span>
+                <div className="messageBody">
+                  <div className="messageMeta">{authorName}</div>
+                  <p>{message.content}</p>
+                </div>
+              </article>
+            );
+          })}
           {isSending && !isReceiving && (
             <article className="message assistant pending">
               <span className="messageAvatar">H</span>
@@ -331,7 +405,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
                   event.currentTarget.form?.requestSubmit();
                 }
               }}
-              placeholder="Message General..."
+              placeholder={`Message ${threads.find((thread) => thread.id === selectedThreadId)?.title ?? "General"}...`}
               rows={1}
               disabled={isSending || isLoadingHistory}
             />
@@ -372,10 +446,15 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
               <div><strong>Personal</strong><span>Private workspace</span></div>
               <button type="button" onClick={() => setIsThreadDrawerOpen(false)} aria-label="Close threads">×</button>
             </div>
-            <button className="threadItem active" type="button" onClick={() => setIsThreadDrawerOpen(false)}>
-              <span className="threadGlyph">◇</span>
-              <span><strong>General</strong><small>Your private Hermes thread</small></span>
-            </button>
+            <button className="newThreadButton" type="button" onClick={createThread}>＋ New chat</button>
+            <div className="threadList" aria-label="Threads">
+              {threads.map((thread) => (
+                <button className={`threadItem ${thread.id === selectedThreadId ? "active" : ""}`} type="button" key={thread.id} onClick={() => selectThread(thread.id)}>
+                  <span className="threadGlyph">◇</span>
+                  <span><strong>{thread.title}</strong><small>Your private Hermes thread</small></span>
+                </button>
+              ))}
+            </div>
           </aside>
         </>
       )}

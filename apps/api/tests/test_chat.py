@@ -34,12 +34,19 @@ async def fake_append_message(session, **values):
     return UUID("827cae77-34b9-41ae-92f9-c61ca6de8205")
 
 
+async def fake_require_personal_thread(session, user_id, thread_id):
+    assert user_id == UUID(USER_ID)
+    return thread_id
+
+
 async def fake_load_messages(session, thread_id, limit=100):
     return [{
         "id": "827cae77-34b9-41ae-92f9-c61ca6de8205",
         "role": "user",
         "content": "Hello Hermes",
         "created_at": datetime.now(timezone.utc),
+        "author_user_id": USER_ID,
+        "author_name": "Skavan",
     }]
 
 
@@ -48,6 +55,7 @@ def configure_conversation_fakes(monkeypatch) -> None:
     monkeypatch.setattr(main, "ensure_personal_thread", fake_ensure_personal_thread)
     monkeypatch.setattr(main, "append_message", fake_append_message)
     monkeypatch.setattr(main, "load_messages", fake_load_messages)
+    monkeypatch.setattr(main, "require_personal_thread", fake_require_personal_thread)
 
 
 class FakeHermesAdapter:
@@ -96,6 +104,24 @@ def test_hermes_health_uses_backend_adapter() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_chat_history_marks_the_authenticated_author(monkeypatch) -> None:
+    configure_conversation_fakes(monkeypatch)
+    response = TestClient(app).get(
+        "/api/chat/history",
+        headers={"X-Skavan-User-Id": USER_ID},
+    )
+
+    assert response.status_code == 200
+    assert response.json()[0] == {
+        "id": "827cae77-34b9-41ae-92f9-c61ca6de8205",
+        "role": "user",
+        "content": "Hello Hermes",
+        "created_at": response.json()[0]["created_at"],
+        "is_current_user": True,
+        "author_name": "Skavan",
+    }
 
 
 def test_chat_streams_normalized_sse_events(monkeypatch) -> None:

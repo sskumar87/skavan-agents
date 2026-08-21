@@ -35,6 +35,10 @@ messages = table(
     column("author_kind", String(32)), column("content", Text), column("metadata", JSONB),
     column("created_at", DateTime(timezone=True)),
 )
+users = table(
+    "users",
+    column("id", PG_UUID(as_uuid=True)), column("display_name", String(200)),
+)
 
 
 def personal_context_ids(user_id: UUID) -> tuple[UUID, UUID, UUID]:
@@ -69,6 +73,48 @@ async def ensure_personal_thread(session: AsyncSession, user_id: UUID) -> UUID:
     return thread_id
 
 
+async def list_personal_threads(session: AsyncSession, user_id: UUID) -> list[dict[str, str]]:
+    group_id, _, _ = personal_context_ids(user_id)
+    rows = (
+        await session.execute(
+            select(threads.c.id, threads.c.title)
+            .where(threads.c.group_id == group_id, threads.c.archived_at.is_(None))
+            .order_by(threads.c.created_at.desc())
+        )
+    ).all()
+    return [{"id": str(row.id), "title": row.title} for row in rows]
+
+
+async def create_personal_thread(session: AsyncSession, user_id: UUID) -> dict[str, str]:
+    group_id, _, _ = personal_context_ids(user_id)
+    thread_id = uuid4()
+    now = datetime.now(timezone.utc)
+    await session.execute(
+        insert(threads).values(
+            id=thread_id, group_id=group_id, title="New chat", created_by=user_id,
+            archived_at=None, created_at=now, updated_at=now,
+        )
+    )
+    await session.commit()
+    return {"id": str(thread_id), "title": "New chat"}
+
+
+async def require_personal_thread(session: AsyncSession, user_id: UUID, thread_id: UUID) -> UUID:
+    group_id, _, _ = personal_context_ids(user_id)
+    found = (
+        await session.execute(
+            select(threads.c.id).where(
+                threads.c.id == thread_id,
+                threads.c.group_id == group_id,
+                threads.c.archived_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if found is None:
+        raise ValueError("Thread not found")
+    return found
+
+
 async def append_message(
     session: AsyncSession,
     *,
@@ -101,8 +147,10 @@ async def load_messages(session: AsyncSession, thread_id: UUID, limit: int = 100
         await session.execute(
             select(
                 messages.c.id, messages.c.author_kind, messages.c.content, messages.c.created_at,
-                messages.c.sequence_number,
+                messages.c.sequence_number, messages.c.author_user_id,
+                users.c.display_name.label("author_name"),
             )
+            .select_from(messages.outerjoin(users, users.c.id == messages.c.author_user_id))
             .where(messages.c.thread_id == thread_id)
             .order_by(messages.c.sequence_number.desc())
             .limit(limit)
@@ -114,6 +162,8 @@ async def load_messages(session: AsyncSession, thread_id: UUID, limit: int = 100
             "role": "user" if row.author_kind == "USER" else "assistant",
             "content": row.content,
             "created_at": row.created_at,
+            "author_user_id": str(row.author_user_id) if row.author_user_id else None,
+            "author_name": row.author_name,
         }
         for row in reversed(rows)
     ]
