@@ -1,0 +1,1408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Skav Login Concept</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+</head>
+<body>
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="Skav Login Concept" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;Skav Login Concept&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(
+    --background,
+    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
+  ) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --color-background-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --card-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --popover: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255), rgb(45 45 45))
+  );
+  --popover-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --primary: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --primary-foreground: var(
+    --color-text-inverse,
+    light-dark(rgb(255 255 255), rgb(13 13 13))
+  );
+  --secondary: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
+  );
+  --secondary-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: var(
+    --color-text-secondary,
+    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
+  );
+  --accent: var(
+    --color-background-info,
+    light-dark(rgb(229 242 255), rgb(13 39 63))
+  );
+  --accent-foreground: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --destructive: var(
+    --color-text-warning,
+    light-dark(rgb(226 85 7), rgb(255 133 73))
+  );
+  --border: var(
+    --color-border-secondary,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+  --input: var(
+    --color-border-primary,
+    light-dark(
+      rgb(26 28 31 / 11.8%),
+      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+    )
+  );
+  --ring: var(
+    --color-ring-primary,
+    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
+  );
+  --font-size-base: var(--font-text-md-size, 14px);
+  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
+  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
+  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
+  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
+  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
+  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --radius: var(--border-radius-lg, 12.5px);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
+  --color-background-primary: var(
+    --background,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --color-text-primary: var(
+    --foreground,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --color-border-secondary: var(
+    --border,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+
+  margin: 0;
+  padding: 5px;
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans) !important;
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead th {
+  padding-block: 8px;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 6px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: superellipse(1.5);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card, .progress) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.progress {
+  display: flex;
+  height: 6px;
+  margin-block: calc((var(--line-height-normal, 1.5em) - 6px) / 2);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+}
+
+.progress-bar {
+  height: 100%;
+  flex-shrink: 0;
+  border: 0;
+  background: var(--viz-series-1);
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: superellipse(1.5);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+  [aria-pressed=&quot;true&quot;],
+  [aria-selected=&quot;true&quot;],
+  .is-selected
+) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+/* Model-authored chart rules can otherwise stretch icons after these styles load. */
+svg.lucide {
+  display: block;
+  width: 16px !important;
+  height: 16px !important;
+  flex: none;
+  margin: 0 !important;
+  stroke-width: 1.6;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div id=&quot;skav-auth-concept&quot; data-theme=&quot;neon-grid&quot;&gt;
+  &lt;div class=&quot;skav-auth-window&quot;&gt;
+    &lt;header class=&quot;skav-auth-header&quot;&gt;
+      &lt;a class=&quot;skav-auth-brand&quot; href=&quot;#&quot; aria-label=&quot;Skav Platform home&quot;&gt;
+        &lt;span class=&quot;skav-auth-orb&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;
+        &lt;span&gt;SKAV PLATFORM&lt;/span&gt;
+      &lt;/a&gt;
+      &lt;div class=&quot;skav-auth-themes&quot; aria-label=&quot;Preview theme&quot;&gt;
+        &lt;span class=&quot;skav-auth-theme-label&quot;&gt;THEME&lt;/span&gt;
+        &lt;button type=&quot;button&quot; data-skav-theme=&quot;neon-grid&quot; aria-label=&quot;Neon Grid theme&quot; aria-pressed=&quot;true&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/button&gt;
+        &lt;button type=&quot;button&quot; data-skav-theme=&quot;violet-pulse&quot; aria-label=&quot;Violet Pulse theme&quot; aria-pressed=&quot;false&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/button&gt;
+        &lt;button type=&quot;button&quot; data-skav-theme=&quot;amber-terminal&quot; aria-label=&quot;Amber Terminal theme&quot; aria-pressed=&quot;false&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/button&gt;
+        &lt;button type=&quot;button&quot; data-skav-theme=&quot;daylight-circuit&quot; aria-label=&quot;Daylight Circuit theme&quot; aria-pressed=&quot;false&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/button&gt;
+      &lt;/div&gt;
+    &lt;/header&gt;
+
+    &lt;div class=&quot;skav-auth-layout&quot;&gt;
+      &lt;section class=&quot;skav-auth-story&quot; aria-label=&quot;Skav Platform introduction&quot;&gt;
+        &lt;div class=&quot;skav-auth-scanline&quot; aria-hidden=&quot;true&quot;&gt;&lt;/div&gt;
+        &lt;p class=&quot;skav-auth-kicker&quot;&gt;&lt;span&gt;&lt;/span&gt; HERMES RUNTIME ONLINE&lt;/p&gt;
+        &lt;h1&gt;Your private command center for intelligent work.&lt;/h1&gt;
+        &lt;p class=&quot;skav-auth-lead&quot;&gt;One identity for personal agents, collaborative groups, shared context, and secure tool execution.&lt;/p&gt;
+        &lt;div class=&quot;skav-auth-terminal&quot; aria-label=&quot;Platform connection status&quot;&gt;
+          &lt;div&gt;&lt;span&gt;01&lt;/span&gt;&lt;strong&gt;IDENTITY&lt;/strong&gt;&lt;em&gt;OIDC / PKCE&lt;/em&gt;&lt;b&gt;READY&lt;/b&gt;&lt;/div&gt;
+          &lt;div&gt;&lt;span&gt;02&lt;/span&gt;&lt;strong&gt;CONTEXT&lt;/strong&gt;&lt;em&gt;GROUP ISOLATED&lt;/em&gt;&lt;b&gt;LOCKED&lt;/b&gt;&lt;/div&gt;
+          &lt;div&gt;&lt;span&gt;03&lt;/span&gt;&lt;strong&gt;AGENT&lt;/strong&gt;&lt;em&gt;HERMES LINK&lt;/em&gt;&lt;b&gt;ONLINE&lt;/b&gt;&lt;/div&gt;
+        &lt;/div&gt;
+        &lt;p class=&quot;skav-auth-trust&quot;&gt;&lt;i data-lucide=&quot;shield-check&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt; Credentials are handled by the dedicated identity service.&lt;/p&gt;
+      &lt;/section&gt;
+
+      &lt;section class=&quot;skav-auth-form-shell&quot; aria-label=&quot;Account access&quot;&gt;
+        &lt;div class=&quot;skav-auth-form-heading&quot;&gt;
+          &lt;p&gt;SECURE ACCESS &lt;span&gt;v0.1&lt;/span&gt;&lt;/p&gt;
+          &lt;h2 id=&quot;skav-auth-title&quot;&gt;Welcome back&lt;/h2&gt;
+          &lt;div class=&quot;skav-auth-tabs&quot; role=&quot;tablist&quot; aria-label=&quot;Account action&quot;&gt;
+            &lt;button type=&quot;button&quot; role=&quot;tab&quot; aria-selected=&quot;true&quot; aria-controls=&quot;skav-sign-in&quot; id=&quot;skav-sign-in-tab&quot;&gt;Sign in&lt;/button&gt;
+            &lt;button type=&quot;button&quot; role=&quot;tab&quot; aria-selected=&quot;false&quot; aria-controls=&quot;skav-register&quot; id=&quot;skav-register-tab&quot;&gt;Create account&lt;/button&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+
+        &lt;form id=&quot;skav-sign-in&quot; class=&quot;skav-auth-form&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;skav-sign-in-tab&quot;&gt;
+          &lt;label&gt;Email address
+            &lt;span class=&quot;skav-auth-input&quot;&gt;&lt;i data-lucide=&quot;mail&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;input type=&quot;email&quot; autocomplete=&quot;email&quot; placeholder=&quot;you@example.com&quot;&gt;&lt;/span&gt;
+          &lt;/label&gt;
+          &lt;label&gt;Password
+            &lt;span class=&quot;skav-auth-input&quot;&gt;&lt;i data-lucide=&quot;key-round&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;input type=&quot;password&quot; autocomplete=&quot;current-password&quot; placeholder=&quot;Enter your password&quot;&gt;&lt;button type=&quot;button&quot; data-password-toggle aria-label=&quot;Show password&quot;&gt;&lt;i data-lucide=&quot;eye&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/span&gt;
+          &lt;/label&gt;
+          &lt;div class=&quot;skav-auth-options&quot;&gt;
+            &lt;label&gt;&lt;input type=&quot;checkbox&quot;&gt; Keep me signed in&lt;/label&gt;
+            &lt;a href=&quot;#&quot;&gt;Forgot password?&lt;/a&gt;
+          &lt;/div&gt;
+          &lt;button class=&quot;skav-auth-primary&quot; type=&quot;submit&quot;&gt;Enter platform &lt;i data-lucide=&quot;arrow-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+          &lt;div class=&quot;skav-auth-divider&quot;&gt;&lt;span&gt;OR CONTINUE WITH&lt;/span&gt;&lt;/div&gt;
+          &lt;button class=&quot;skav-auth-social&quot; type=&quot;button&quot; disabled&gt;&lt;i data-lucide=&quot;fingerprint&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt; Passkey &lt;small&gt;COMING SOON&lt;/small&gt;&lt;/button&gt;
+        &lt;/form&gt;
+
+        &lt;form id=&quot;skav-register&quot; class=&quot;skav-auth-form&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;skav-register-tab&quot; hidden&gt;
+          &lt;div class=&quot;skav-auth-name-row&quot;&gt;
+            &lt;label&gt;First name
+              &lt;span class=&quot;skav-auth-input&quot;&gt;&lt;input type=&quot;text&quot; autocomplete=&quot;given-name&quot; placeholder=&quot;Ada&quot;&gt;&lt;/span&gt;
+            &lt;/label&gt;
+            &lt;label&gt;Last name
+              &lt;span class=&quot;skav-auth-input&quot;&gt;&lt;input type=&quot;text&quot; autocomplete=&quot;family-name&quot; placeholder=&quot;Lovelace&quot;&gt;&lt;/span&gt;
+            &lt;/label&gt;
+          &lt;/div&gt;
+          &lt;label&gt;Email address
+            &lt;span class=&quot;skav-auth-input&quot;&gt;&lt;i data-lucide=&quot;mail&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;input type=&quot;email&quot; autocomplete=&quot;email&quot; placeholder=&quot;you@example.com&quot;&gt;&lt;/span&gt;
+          &lt;/label&gt;
+          &lt;label&gt;Create password
+            &lt;span class=&quot;skav-auth-input&quot;&gt;&lt;i data-lucide=&quot;key-round&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;input type=&quot;password&quot; autocomplete=&quot;new-password&quot; placeholder=&quot;At least 8 characters&quot;&gt;&lt;button type=&quot;button&quot; data-password-toggle aria-label=&quot;Show password&quot;&gt;&lt;i data-lucide=&quot;eye&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/span&gt;
+          &lt;/label&gt;
+          &lt;label&gt;Confirm password
+            &lt;span class=&quot;skav-auth-input&quot;&gt;&lt;i data-lucide=&quot;check-circle-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;input type=&quot;password&quot; autocomplete=&quot;new-password&quot; placeholder=&quot;Repeat your password&quot;&gt;&lt;/span&gt;
+          &lt;/label&gt;
+          &lt;label class=&quot;skav-auth-terms&quot;&gt;&lt;input type=&quot;checkbox&quot;&gt; &lt;span&gt;I agree to the &lt;a href=&quot;#&quot;&gt;Terms&lt;/a&gt; and &lt;a href=&quot;#&quot;&gt;Privacy Policy&lt;/a&gt;.&lt;/span&gt;&lt;/label&gt;
+          &lt;button class=&quot;skav-auth-primary&quot; type=&quot;submit&quot;&gt;Create secure account &lt;i data-lucide=&quot;arrow-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+          &lt;p class=&quot;skav-auth-verification&quot;&gt;&lt;i data-lucide=&quot;mail-check&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt; We’ll send a verification code to your email.&lt;/p&gt;
+        &lt;/form&gt;
+        &lt;p class=&quot;skav-auth-status&quot; role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;&lt;/p&gt;
+      &lt;/section&gt;
+    &lt;/div&gt;
+
+    &lt;footer class=&quot;skav-auth-footer&quot;&gt;&lt;span&gt;© 2026 SKAV PLATFORM&lt;/span&gt;&lt;span&gt;ENCRYPTED SESSION · AUTHORIZATION CODE + PKCE&lt;/span&gt;&lt;/footer&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;style&gt;
+  #skav-auth-concept {
+    --skav-bg: #050914;
+    --skav-panel: #080f1f;
+    --skav-panel-strong: #0b1528;
+    --skav-line: #1c2a40;
+    --skav-text: #eef5ff;
+    --skav-muted: #8fa2bb;
+    --skav-accent: #14dce5;
+    --skav-accent-soft: rgba(20, 220, 229, .12);
+    --skav-accent-glow: rgba(20, 220, 229, .24);
+    --skav-good: #28d889;
+    --skav-input: #07101f;
+    --skav-grid: rgba(20, 220, 229, .045);
+    color: var(--skav-text);
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    width: 100%;
+  }
+  #skav-auth-concept[data-theme=&quot;violet-pulse&quot;] {
+    --skav-bg: #080712; --skav-panel: #100d20; --skav-panel-strong: #17112b; --skav-line: #33284e;
+    --skav-text: #f5f0ff; --skav-muted: #ac9fc5; --skav-accent: #b77aff; --skav-accent-soft: rgba(183,122,255,.13);
+    --skav-accent-glow: rgba(183,122,255,.25); --skav-good: #4de1b2; --skav-input: #0d0a19; --skav-grid: rgba(183,122,255,.045);
+  }
+  #skav-auth-concept[data-theme=&quot;amber-terminal&quot;] {
+    --skav-bg: #0d0b06; --skav-panel: #151108; --skav-panel-strong: #1d170a; --skav-line: #403316;
+    --skav-text: #fff5d9; --skav-muted: #b5a47b; --skav-accent: #ffb627; --skav-accent-soft: rgba(255,182,39,.13);
+    --skav-accent-glow: rgba(255,182,39,.24); --skav-good: #b9dc4c; --skav-input: #110e07; --skav-grid: rgba(255,182,39,.045);
+  }
+  #skav-auth-concept[data-theme=&quot;daylight-circuit&quot;] {
+    --skav-bg: #edf4f7; --skav-panel: #ffffff; --skav-panel-strong: #f5fafb; --skav-line: #cbdce2;
+    --skav-text: #102633; --skav-muted: #5f7480; --skav-accent: #007f89; --skav-accent-soft: rgba(0,127,137,.09);
+    --skav-accent-glow: rgba(0,127,137,.16); --skav-good: #08784d; --skav-input: #f7fbfc; --skav-grid: rgba(0,127,137,.055);
+  }
+  #skav-auth-concept * { box-sizing: border-box; }
+  #skav-auth-concept .skav-auth-window {
+    background: var(--skav-bg); border: 1px solid var(--skav-line); border-radius: 18px; overflow: hidden; position: relative;
+    box-shadow: 0 22px 70px rgba(0,0,0,.26); transition: background .25s ease, color .25s ease;
+  }
+  #skav-auth-concept .skav-auth-window::before {
+    content: &quot;&quot;; position: absolute; inset: 0; pointer-events: none; opacity: .75;
+    background-image: linear-gradient(var(--skav-grid) 1px, transparent 1px), linear-gradient(90deg, var(--skav-grid) 1px, transparent 1px);
+    background-size: 34px 34px;
+  }
+  #skav-auth-concept .skav-auth-header, #skav-auth-concept .skav-auth-footer {
+    position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    padding: 17px 22px; border-bottom: 1px solid var(--skav-line); background: color-mix(in srgb, var(--skav-bg) 91%, transparent);
+  }
+  #skav-auth-concept .skav-auth-brand { display: inline-flex; align-items: center; gap: 11px; color: var(--skav-text); text-decoration: none; font: 600 13px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .12em; }
+  #skav-auth-concept .skav-auth-orb { width: 11px; height: 11px; border-radius: 50%; background: var(--skav-accent); box-shadow: 0 0 16px var(--skav-accent); }
+  #skav-auth-concept .skav-auth-themes { display: flex; align-items: center; gap: 7px; }
+  #skav-auth-concept .skav-auth-theme-label { color: var(--skav-muted); font: 500 10px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .15em; margin-right: 4px; }
+  #skav-auth-concept .skav-auth-themes button { width: 25px; height: 25px; padding: 4px; border: 1px solid transparent; border-radius: 7px; background: transparent; cursor: pointer; }
+  #skav-auth-concept .skav-auth-themes button[aria-pressed=&quot;true&quot;] { border-color: var(--skav-accent); background: var(--skav-accent-soft); }
+  #skav-auth-concept .skav-auth-themes button span { display: block; width: 100%; height: 100%; border-radius: 4px; }
+  #skav-auth-concept [data-skav-theme=&quot;neon-grid&quot;] span { background: #14dce5; }
+  #skav-auth-concept [data-skav-theme=&quot;violet-pulse&quot;] span { background: #b77aff; }
+  #skav-auth-concept [data-skav-theme=&quot;amber-terminal&quot;] span { background: #ffb627; }
+  #skav-auth-concept [data-skav-theme=&quot;daylight-circuit&quot;] span { background: linear-gradient(135deg,#ffffff 50%,#007f89 50%); border: 1px solid #8aa0aa; }
+  #skav-auth-concept .skav-auth-layout { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(340px, .92fr); min-height: 610px; }
+  #skav-auth-concept .skav-auth-story { position: relative; padding: 64px 7% 50px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+  #skav-auth-concept .skav-auth-story::after { content: &quot;&quot;; position: absolute; width: 420px; height: 420px; border-radius: 50%; left: -210px; bottom: -250px; background: var(--skav-accent-soft); filter: blur(6px); }
+  #skav-auth-concept .skav-auth-scanline { position: absolute; inset: 13% 8%; opacity: .34; background: linear-gradient(90deg, transparent, var(--skav-accent-soft), transparent); clip-path: polygon(0 48%,100% 0,100% 3%,0 52%); }
+  #skav-auth-concept .skav-auth-kicker { color: var(--skav-accent); font: 500 11px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .13em; }
+  #skav-auth-concept .skav-auth-kicker span { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--skav-good); box-shadow: 0 0 9px var(--skav-good); margin-right: 6px; }
+  #skav-auth-concept .skav-auth-story h1 { max-width: 620px; margin: 18px 0 16px; color: var(--skav-text); font-size: clamp(30px, 4.6vw, 54px); line-height: 1.06; letter-spacing: -.035em; font-weight: 500; }
+  #skav-auth-concept .skav-auth-lead { max-width: 560px; margin: 0; color: var(--skav-muted); font-size: 16px; line-height: 1.65; }
+  #skav-auth-concept .skav-auth-terminal { margin-top: 38px; max-width: 560px; border-top: 1px solid var(--skav-line); }
+  #skav-auth-concept .skav-auth-terminal div { display: grid; grid-template-columns: 30px 1fr 1.2fr auto; gap: 10px; align-items: center; min-height: 43px; border-bottom: 1px solid var(--skav-line); font: 500 10px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .08em; }
+  #skav-auth-concept .skav-auth-terminal span, #skav-auth-concept .skav-auth-terminal em { color: var(--skav-muted); font-style: normal; }
+  #skav-auth-concept .skav-auth-terminal strong { color: var(--skav-text); font-weight: 500; }
+  #skav-auth-concept .skav-auth-terminal b { color: var(--skav-good); font-weight: 500; }
+  #skav-auth-concept .skav-auth-trust { position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; margin: 25px 0 0; color: var(--skav-muted); font-size: 12px; }
+  #skav-auth-concept .skav-auth-form-shell { margin: 28px 28px 28px 0; padding: 36px 38px 30px; align-self: center; background: var(--skav-panel); border: 1px solid var(--skav-line); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.2), 0 0 35px var(--skav-accent-glow); }
+  #skav-auth-concept .skav-auth-form-heading &gt; p { display: flex; justify-content: space-between; margin: 0; color: var(--skav-accent); font: 500 10px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .14em; }
+  #skav-auth-concept .skav-auth-form-heading &gt; p span { color: var(--skav-muted); }
+  #skav-auth-concept .skav-auth-form-heading h2 { margin: 13px 0 24px; color: var(--skav-text); font-size: 28px; font-weight: 500; letter-spacing: -.025em; }
+  #skav-auth-concept .skav-auth-tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--skav-line); margin-bottom: 25px; }
+  #skav-auth-concept .skav-auth-tabs button { padding: 10px 6px 12px; border: 0; border-bottom: 2px solid transparent; color: var(--skav-muted); background: transparent; cursor: pointer; font: 500 13px ui-sans-serif, system-ui, sans-serif; }
+  #skav-auth-concept .skav-auth-tabs button[aria-selected=&quot;true&quot;] { color: var(--skav-accent); border-bottom-color: var(--skav-accent); }
+  #skav-auth-concept .skav-auth-form { display: grid; gap: 16px; }
+  #skav-auth-concept .skav-auth-form label { display: grid; gap: 7px; color: var(--skav-muted); font-size: 12px; font-weight: 500; }
+  #skav-auth-concept .skav-auth-input { display: flex; align-items: center; gap: 9px; min-height: 44px; padding: 0 12px; background: var(--skav-input); border: 1px solid var(--skav-line); border-radius: 8px; color: var(--skav-muted); }
+  #skav-auth-concept .skav-auth-input:focus-within { border-color: var(--skav-accent); box-shadow: 0 0 0 3px var(--skav-accent-soft); }
+  #skav-auth-concept .skav-auth-input input { min-width: 0; width: 100%; padding: 11px 0; border: 0; outline: 0; background: transparent; color: var(--skav-text); font: 400 14px ui-sans-serif, system-ui, sans-serif; }
+  #skav-auth-concept .skav-auth-input input::placeholder { color: color-mix(in srgb, var(--skav-muted) 72%, transparent); }
+  #skav-auth-concept .skav-auth-input button { display: inline-grid; place-items: center; padding: 4px; border: 0; background: transparent; color: var(--skav-muted); cursor: pointer; }
+  #skav-auth-concept .skav-auth-options { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  #skav-auth-concept .skav-auth-options label, #skav-auth-concept .skav-auth-terms { display: flex; grid-template-columns: none; align-items: center; gap: 8px; }
+  #skav-auth-concept input[type=&quot;checkbox&quot;] { accent-color: var(--skav-accent); }
+  #skav-auth-concept a { color: var(--skav-accent); }
+  #skav-auth-concept .skav-auth-primary, #skav-auth-concept .skav-auth-social { min-height: 45px; border-radius: 8px; font: 500 13px ui-sans-serif, system-ui, sans-serif; cursor: pointer; }
+  #skav-auth-concept .skav-auth-primary { display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--skav-accent); background: var(--skav-accent); color: var(--skav-bg); box-shadow: 0 8px 24px var(--skav-accent-glow); }
+  #skav-auth-concept .skav-auth-social { display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--skav-line); background: var(--skav-panel-strong); color: var(--skav-muted); }
+  #skav-auth-concept .skav-auth-social small { margin-left: auto; margin-right: 8px; color: var(--skav-accent); font: 500 9px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .1em; }
+  #skav-auth-concept .skav-auth-divider { display: flex; align-items: center; gap: 10px; color: var(--skav-muted); font: 500 9px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .11em; }
+  #skav-auth-concept .skav-auth-divider::before, #skav-auth-concept .skav-auth-divider::after { content: &quot;&quot;; height: 1px; flex: 1; background: var(--skav-line); }
+  #skav-auth-concept .skav-auth-name-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  #skav-auth-concept .skav-auth-verification, #skav-auth-concept .skav-auth-status { display: flex; align-items: center; gap: 7px; margin: 0; color: var(--skav-muted); font-size: 11px; }
+  #skav-auth-concept .skav-auth-status { min-height: 16px; margin-top: 14px; color: var(--skav-good); }
+  #skav-auth-concept .skav-auth-footer { border-top: 1px solid var(--skav-line); border-bottom: 0; color: var(--skav-muted); font: 500 9px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .1em; }
+  #skav-auth-concept svg { flex: 0 0 auto; }
+  @media (max-width: 760px) {
+    #skav-auth-concept .skav-auth-layout { grid-template-columns: 1fr; }
+    #skav-auth-concept .skav-auth-story { padding: 34px 24px 24px; }
+    #skav-auth-concept .skav-auth-story h1 { font-size: 34px; max-width: 560px; }
+    #skav-auth-concept .skav-auth-lead { font-size: 14px; }
+    #skav-auth-concept .skav-auth-terminal { display: none; }
+    #skav-auth-concept .skav-auth-form-shell { margin: 0 18px 24px; padding: 28px 24px 24px; }
+  }
+  @media (max-width: 460px) {
+    #skav-auth-concept .skav-auth-window { border-radius: 12px; }
+    #skav-auth-concept .skav-auth-header { align-items: flex-start; flex-direction: column; padding: 16px; }
+    #skav-auth-concept .skav-auth-story { padding: 27px 18px 20px; }
+    #skav-auth-concept .skav-auth-story h1 { font-size: 29px; }
+    #skav-auth-concept .skav-auth-trust { align-items: flex-start; }
+    #skav-auth-concept .skav-auth-form-shell { margin: 0 10px 14px; padding: 24px 18px 20px; }
+    #skav-auth-concept .skav-auth-name-row { grid-template-columns: 1fr; }
+    #skav-auth-concept .skav-auth-options { align-items: flex-start; flex-direction: column; }
+    #skav-auth-concept .skav-auth-footer { align-items: flex-start; flex-direction: column; padding: 14px 16px; }
+  }
+&lt;/style&gt;
+
+&lt;script&gt;
+  (() =&gt; {
+    const root = document.getElementById(&#x27;skav-auth-concept&#x27;);
+    if (!root) return;
+    const title = root.querySelector(&#x27;#skav-auth-title&#x27;);
+    const signIn = root.querySelector(&#x27;#skav-sign-in&#x27;);
+    const register = root.querySelector(&#x27;#skav-register&#x27;);
+    const signInTab = root.querySelector(&#x27;#skav-sign-in-tab&#x27;);
+    const registerTab = root.querySelector(&#x27;#skav-register-tab&#x27;);
+    const status = root.querySelector(&#x27;.skav-auth-status&#x27;);
+
+    function selectPanel(panel) {
+      const registration = panel === &#x27;register&#x27;;
+      signIn.hidden = registration;
+      register.hidden = !registration;
+      signInTab.setAttribute(&#x27;aria-selected&#x27;, String(!registration));
+      registerTab.setAttribute(&#x27;aria-selected&#x27;, String(registration));
+      title.textContent = registration ? &#x27;Create your identity&#x27; : &#x27;Welcome back&#x27;;
+      status.textContent = &#x27;&#x27;;
+    }
+
+    signInTab.addEventListener(&#x27;click&#x27;, () =&gt; selectPanel(&#x27;signin&#x27;));
+    registerTab.addEventListener(&#x27;click&#x27;, () =&gt; selectPanel(&#x27;register&#x27;));
+
+    root.querySelectorAll(&#x27;[data-skav-theme]&#x27;).forEach((button) =&gt; {
+      button.addEventListener(&#x27;click&#x27;, () =&gt; {
+        root.dataset.theme = button.dataset.skavTheme;
+        root.querySelectorAll(&#x27;[data-skav-theme]&#x27;).forEach((item) =&gt; item.setAttribute(&#x27;aria-pressed&#x27;, String(item === button)));
+      });
+    });
+
+    root.querySelectorAll(&#x27;[data-password-toggle]&#x27;).forEach((button) =&gt; {
+      button.addEventListener(&#x27;click&#x27;, () =&gt; {
+        const input = button.closest(&#x27;.skav-auth-input&#x27;).querySelector(&#x27;input&#x27;);
+        const showing = input.type === &#x27;text&#x27;;
+        input.type = showing ? &#x27;password&#x27; : &#x27;text&#x27;;
+        button.setAttribute(&#x27;aria-label&#x27;, showing ? &#x27;Show password&#x27; : &#x27;Hide password&#x27;);
+      });
+    });
+
+    root.querySelectorAll(&#x27;form&#x27;).forEach((form) =&gt; {
+      form.addEventListener(&#x27;submit&#x27;, (event) =&gt; {
+        event.preventDefault();
+        status.textContent = form.id === &#x27;skav-register&#x27; ? &#x27;Prototype: account verification would start here.&#x27; : &#x27;Prototype: secure sign-in would start here.&#x27;;
+      });
+    });
+  })();
+&lt;/script&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handleLeave = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</body>
+</html>

@@ -19,3 +19,14 @@ authorization and the written context rules remain authoritative.
 When a replacement is explicitly approved, add it as a new versioned file,
 update the design contract and checksum, and preserve the prior mockup in Git
 history. Do not silently overwrite the approved reference.
+
+## Login and registration V1 candidate
+
+- File: `../prototypes/login-registration-v1.html`
+- Status: interactive candidate awaiting product approval
+- SHA-256: `E00F5891DFA4A568C7DEC9599715D94A4DD1C6C2624AB7C024F2A7ABC01436BC`
+- Design contract: `docs/architecture/ui-design-system.md`
+
+The prototype includes sign-in and registration states, responsive reflow,
+password visibility controls, and all four locked V1 themes. It is a design
+reference only: forms do not transmit data or create accounts.
