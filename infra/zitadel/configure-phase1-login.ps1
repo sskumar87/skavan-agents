@@ -8,9 +8,15 @@ param(
 $ErrorActionPreference = "Stop"
 
 function New-HexSecret([int]$ByteCount) {
-    return [Convert]::ToHexString(
-        [System.Security.Cryptography.RandomNumberGenerator]::GetBytes($ByteCount)
-    ).ToLowerInvariant()
+    $bytes = New-Object byte[] $ByteCount
+    $generator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    try {
+        $generator.GetBytes($bytes)
+    }
+    finally {
+        $generator.Dispose()
+    }
+    return ([BitConverter]::ToString($bytes) -replace '-', '').ToLowerInvariant()
 }
 
 function ConvertTo-PlainText([Security.SecureString]$Value) {
