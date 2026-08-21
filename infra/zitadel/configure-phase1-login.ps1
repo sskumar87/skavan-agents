@@ -73,6 +73,7 @@ Set-EnvironmentValue $environmentFile "AUTH_SECRET" $authSecret
 Set-EnvironmentValue $environmentFile "AUTH_TRUST_HOST" "true"
 Set-EnvironmentValue $environmentFile "AUTH_SESSION_MAX_AGE" "3600"
 Set-EnvironmentValue $environmentFile "ZITADEL_ISSUER_URL" "http://auth.localhost:8081"
+Set-EnvironmentValue $environmentFile "ZITADEL_CLIENT_ID" "bootstrap-pending"
 Set-EnvironmentValue $environmentFile "ZITADEL_CLIENT_SECRET" $oidcLibrarySecret
 Set-EnvironmentValue $environmentFile "ZITADEL_DATABASE_POSTGRES_DSN" $databaseDsn
 Set-EnvironmentValue $environmentFile "ZITADEL_MASTERKEY_FILE" ($masterKeyFile -replace '\\', '/')
