@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlparse
-from uuid import uuid4
+from uuid import UUID as PythonUUID, uuid4
 
 import jwt
 from fastapi import HTTPException
@@ -144,3 +144,38 @@ async def synchronize_user(session: AsyncSession, identity: VerifiedIdentity) ->
         "id": str(result.id), "display_name": result.display_name,
         "email": result.email, "preferences": result.preferences,
     }
+
+
+async def get_platform_user(session: AsyncSession, user_id: PythonUUID) -> dict[str, Any] | None:
+    result = (
+        await session.execute(
+            select(users.c.id, users.c.display_name, users.c.email, users.c.preferences)
+            .where(users.c.id == user_id)
+        )
+    ).one_or_none()
+    if result is None:
+        return None
+    return {
+        "id": str(result.id), "display_name": result.display_name,
+        "email": result.email, "preferences": result.preferences,
+    }
+
+
+async def set_user_theme(
+    session: AsyncSession, user_id: PythonUUID, theme: str,
+) -> dict[str, Any] | None:
+    current = (
+        await session.execute(
+            select(users.c.preferences).where(users.c.id == user_id).with_for_update()
+        )
+    ).scalar_one_or_none()
+    if current is None:
+        return None
+    preferences = {**current, "theme": theme}
+    await session.execute(
+        update(users).where(users.c.id == user_id).values(
+            preferences=preferences, updated_at=datetime.now(timezone.utc),
+        )
+    )
+    await session.commit()
+    return await get_platform_user(session, user_id)

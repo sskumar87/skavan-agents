@@ -12,7 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.conversations import append_message, ensure_personal_thread, load_messages
 from app.database import get_database_session, get_session_factory
 from app.hermes import HermesAdapter, HermesError
-from app.identity import OidcTokenVerifier, synchronize_user
+from app.identity import (
+    OidcTokenVerifier,
+    get_platform_user,
+    set_user_theme,
+    synchronize_user,
+)
 
 
 app = FastAPI(title="Skavan Agents API", version="0.1.0")
@@ -23,6 +28,15 @@ class PlatformUser(BaseModel):
     display_name: str
     email: str | None
     preferences: dict[str, object]
+
+
+ThemeName = Literal[
+    "neon-grid", "violet-pulse", "amber-terminal", "daylight-circuit"
+]
+
+
+class ThemePreferenceUpdate(BaseModel):
+    theme: ThemeName
 
 
 @lru_cache
@@ -74,6 +88,31 @@ def require_platform_user_id(value: str | None) -> UUID:
         return UUID(value)
     except ValueError as exc:
         raise HTTPException(status_code=401, detail="Invalid platform user") from exc
+
+
+@app.get("/api/users/me", response_model=PlatformUser, tags=["users"])
+async def current_platform_user(
+    x_skavan_user_id: str | None = Header(default=None),
+    session: AsyncSession = Depends(get_database_session),
+) -> PlatformUser:
+    user_id = require_platform_user_id(x_skavan_user_id)
+    user = await get_platform_user(session, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="Platform user not found")
+    return PlatformUser.model_validate(user)
+
+
+@app.patch("/api/users/me/preferences/theme", response_model=PlatformUser, tags=["users"])
+async def update_theme_preference(
+    request: ThemePreferenceUpdate,
+    x_skavan_user_id: str | None = Header(default=None),
+    session: AsyncSession = Depends(get_database_session),
+) -> PlatformUser:
+    user_id = require_platform_user_id(x_skavan_user_id)
+    user = await set_user_theme(session, user_id, request.theme)
+    if user is None:
+        raise HTTPException(status_code=404, detail="Platform user not found")
+    return PlatformUser.model_validate(user)
 
 
 @app.get("/api/chat/history", response_model=list[StoredChatMessage], tags=["chat"])

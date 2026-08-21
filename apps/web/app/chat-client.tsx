@@ -4,6 +4,14 @@ import { FormEvent, ReactNode, useEffect, useState } from "react";
 
 type ChatMessage = { id: string; role: "user" | "assistant"; content: string };
 type StreamEvent = { event: string; data: Record<string, unknown> };
+type ThemeName = "neon-grid" | "violet-pulse" | "amber-terminal" | "daylight-circuit";
+
+const themes: { value: ThemeName; label: string }[] = [
+  { value: "neon-grid", label: "Neon Grid" },
+  { value: "violet-pulse", label: "Violet Pulse" },
+  { value: "amber-terminal", label: "Amber Terminal" },
+  { value: "daylight-circuit", label: "Daylight Circuit" },
+];
 
 const initialMessages: ChatMessage[] = [{
   id: "welcome",
@@ -33,6 +41,7 @@ export function ChatClient({ account }: { account: ReactNode }) {
   const [isReceiving, setIsReceiving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hermesStatus, setHermesStatus] = useState<"checking" | "online" | "offline">("checking");
+  const [theme, setTheme] = useState<ThemeName>("neon-grid");
 
   useEffect(() => {
     fetch("/bff/hermes/health")
@@ -40,6 +49,42 @@ export function ChatClient({ account }: { account: ReactNode }) {
       .then((payload: { status?: string }) => setHermesStatus(payload.status === "ok" ? "online" : "offline"))
       .catch(() => setHermesStatus("offline"));
   }, []);
+
+  useEffect(() => {
+    fetch("/bff/users/me", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to load user preferences");
+        return response.json() as Promise<{ preferences?: { theme?: ThemeName } }>;
+      })
+      .then(({ preferences }) => {
+        const saved = preferences?.theme;
+        if (!saved || !themes.some((item) => item.value === saved)) return;
+        document.documentElement.dataset.theme = saved;
+        window.localStorage.setItem("skavan-theme", saved);
+        setTheme(saved);
+      })
+      .catch(() => setTheme((document.documentElement.dataset.theme as ThemeName) || "neon-grid"));
+  }, []);
+
+  async function selectTheme(value: ThemeName) {
+    const previous = theme;
+    document.documentElement.dataset.theme = value;
+    window.localStorage.setItem("skavan-theme", value);
+    setTheme(value);
+    try {
+      const response = await fetch("/bff/users/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme: value }),
+      });
+      if (!response.ok) throw new Error("Unable to save theme");
+    } catch {
+      document.documentElement.dataset.theme = previous;
+      window.localStorage.setItem("skavan-theme", previous);
+      setTheme(previous);
+      setError("Theme preference could not be saved.");
+    }
+  }
 
   useEffect(() => {
     fetch("/bff/chat/history", { cache: "no-store" })
@@ -134,6 +179,19 @@ export function ChatClient({ account }: { account: ReactNode }) {
           <div><p className="eyebrow">SKAV PLATFORM</p><h1>Hermes Console</h1></div>
         </div>
         <div className="topbarActions">
+          <div className="uiThemePicker workspaceThemePicker" aria-label="Theme selection">
+            <span>THEME</span>
+            {themes.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                className={`themeSwatch ${item.value}`}
+                aria-label={item.label}
+                aria-pressed={theme === item.value}
+                onClick={() => selectTheme(item.value)}
+              ><span /></button>
+            ))}
+          </div>
           <div className={`status ${hermesStatus}`} aria-label={`Hermes ${hermesStatus}`}>
             <span className="statusDot" aria-hidden="true" />{hermesStatus.toUpperCase()}
           </div>

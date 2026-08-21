@@ -24,6 +24,7 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
+.uv-cache/
 
 # Editors and OS
 .DS_Store

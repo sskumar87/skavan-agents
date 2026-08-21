@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 96" fill="none">
+  <g transform="translate(8 8)">
+    <path d="M40 6 68 22v36L40 74 12 58V22Z" stroke="#14DCE5" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="m40 6 16 10-16 10-16-10Zm28 16-16 10v20l16 6M12 22l16 10v20l-16 6m28 16V46M28 32l12 14 12-14" stroke="#14DCE5" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="102" y="58" fill="#EAF2FF" font-family="Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="4">SKAV PLATFORM</text>
+</svg>
