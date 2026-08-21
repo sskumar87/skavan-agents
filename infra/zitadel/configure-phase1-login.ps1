@@ -30,7 +30,11 @@ function ConvertTo-PlainText([Security.SecureString]$Value) {
 }
 
 function Set-EnvironmentValue([string]$Path, [string]$Name, [string]$Value) {
-    $lines = if (Test-Path -LiteralPath $Path) { @(Get-Content -LiteralPath $Path) } else { @() }
+    $lines = @(
+        if (Test-Path -LiteralPath $Path) {
+            Get-Content -LiteralPath $Path
+        }
+    )
     $replacement = "$Name=$Value"
     $found = $false
 
