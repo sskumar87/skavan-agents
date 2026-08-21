@@ -36,6 +36,7 @@ $environmentLines = @(
     "HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=$dashboardPassword"
     "HERMES_DASHBOARD_BASIC_AUTH_SECRET=$dashboardSecret"
     "HERMES_DATA_DIR=$dockerDataDirectory"
+    "SKAV_PLATFORM_DIR=C:/SKAV_PLATFORM"
 )
 [System.IO.File]::WriteAllLines((Join-Path $DataDirectory ".env"), $environmentLines)
 

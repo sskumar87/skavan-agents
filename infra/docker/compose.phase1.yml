@@ -65,6 +65,8 @@ services:
       - "127.0.0.1:9119:9119"
     volumes:
       - ${HERMES_DATA_DIR:-C:/SKAV_PLATFORM/secrets/skavan-phase1}:/opt/data
+      - ${SKAV_PLATFORM_DIR:-C:/SKAV_PLATFORM}:/workspace:ro
+      - hermes-workspace-secrets-mask:/workspace/secrets
     healthcheck:
       test: ["CMD", "python", "-c", "import json,urllib.request; assert json.load(urllib.request.urlopen('http://127.0.0.1:8642/health', timeout=3))['status'] == 'ok'"]
       interval: 10s
@@ -78,3 +80,6 @@ networks:
   private-services:
     internal: true
   egress: {}
+
+volumes:
+  hermes-workspace-secrets-mask: {}
