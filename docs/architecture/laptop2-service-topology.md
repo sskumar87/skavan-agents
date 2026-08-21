@@ -20,7 +20,7 @@ boundary. Laptop 1 remains the private Docker-hosted PostgreSQL + pgvector data 
 
 ## Required request paths
 
-1. User traffic arrives through Cloudflare Tunnel to the localhost-bound reverse proxy.
+1. User traffic arrives through Cloudflare Tunnel to the un-published reverse proxies on their private Docker network.
 2. Browser calls the web application and product API only through that proxy.
 3. API validates identity and product authorization before retrieving data or
    calling Hermes.

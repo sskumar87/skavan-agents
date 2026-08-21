@@ -84,8 +84,6 @@ services:
       args:
         PYTHON_IMAGE: ${PYTHON_IMAGE:?Set a reviewed, pinned PYTHON_IMAGE locally}
     restart: unless-stopped
-    env_file:
-      - ../../.env
     environment:
       # Laptop 1 is a private data node. This URL is never published as a port.
       DATABASE_URL: ${DATABASE_URL}
@@ -119,11 +117,13 @@ services:
     image: ${ZITADEL_IMAGE:?Set a pinned, supported ZITADEL_IMAGE locally}
     profiles: ["identity"]
     restart: "no"
-    command: setup --masterkey "${ZITADEL_MASTERKEY}"
+    command: setup --masterkeyFile /run/secrets/zitadel-masterkey
     environment:
       <<: *zitadel-runtime-env
     volumes:
       - zitadel-bootstrap:/zitadel/bootstrap
+    secrets:
+      - zitadel-masterkey
     depends_on:
       zitadel-init:
         condition: service_completed_successfully
@@ -134,12 +134,14 @@ services:
     image: ${ZITADEL_IMAGE:?Set a pinned, supported ZITADEL_IMAGE locally}
     profiles: ["identity"]
     restart: unless-stopped
-    command: start --masterkey "${ZITADEL_MASTERKEY}"
+    command: start --masterkeyFile /run/secrets/zitadel-masterkey
     environment:
       <<: *zitadel-runtime-env
       ZITADEL_PORT: 8080
     volumes:
       - zitadel-bootstrap:/zitadel/bootstrap
+    secrets:
+      - zitadel-masterkey
     depends_on:
       zitadel-init:
         condition: service_completed_successfully
@@ -246,8 +248,6 @@ services:
     profiles: ["hermes"]
     restart: unless-stopped
     command: gateway run
-    env_file:
-      - ../../.env
     environment:
       API_SERVER_ENABLED: "true"
       API_SERVER_HOST: 0.0.0.0
@@ -275,3 +275,7 @@ networks:
 volumes:
   hermes-data: {}
   zitadel-bootstrap: {}
+
+secrets:
+  zitadel-masterkey:
+    file: ${ZITADEL_MASTERKEY_FILE:?Set the protected ZITADEL master-key file path}

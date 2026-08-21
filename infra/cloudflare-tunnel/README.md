@@ -43,15 +43,15 @@ CLOUDFLARED_IMAGE=cloudflare/cloudflared:<reviewed-version>
 Then start the ingress profile together with application services:
 
 ```text
-docker compose -f infra/docker/compose.laptop2.yml up -d
+docker compose --profile identity -f infra/docker/compose.laptop2.yml up -d
 ```
 
 Check the connection with
 `docker compose -f infra/docker/compose.laptop2.yml logs -f cloudflared`.
 
 Neither proxy has a published host port: `cloudflared` reaches them through the
-private Docker `edge` network. Enable the auth hostname only with the reviewed
-ZITADEL identity profile and final external-domain configuration.
+private Docker `edge` network. The command enables the reviewed ZITADEL
+identity profile because the configured auth ingress requires that target.
 
 ## Operational checks
 

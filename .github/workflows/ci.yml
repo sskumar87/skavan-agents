@@ -73,6 +73,22 @@ jobs:
         run: |
           cp .env.example .env
           cp infra/docker/compose.laptop2.example.yml infra/docker/compose.laptop2.yml
+      - name: Validate operations scripts and secret scoping
+        shell: pwsh
+        run: |
+          bash -n infra/laptop1/backup-skavan.sh
+          bash -n infra/laptop1/preflight.sh
+          if (Select-String -Quiet -Pattern '^\s*env_file:' -Path infra/docker/compose.laptop2.example.yml) {
+            throw 'Compose services must use explicit environment allowlists, not a shared env_file.'
+          }
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'infra/laptop2/preflight.ps1'),
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -gt 0) { throw ($errors.Message -join '; ') }
       - name: Validate all Compose profiles
         run: docker compose --env-file .env -f infra/docker/compose.laptop2.yml --profile identity --profile hermes config --quiet
 

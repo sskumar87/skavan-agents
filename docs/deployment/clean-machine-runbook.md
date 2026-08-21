@@ -43,6 +43,7 @@ Assign an owner and rotation date to every secret. Only API receives the Hermes 
 4. Use the database superuser to enable `vector` once per target database. Create a separate migration role for schema changes and a restricted API runtime role; do not give the runtime role extension or schema-creation privileges.
 5. Test authenticated TLS connections from Laptop 2.
 6. Configure encrypted backups plus WAL/PITR to a location outside Laptop 1. Prove a restore before accepting production data.
+7. Run `infra/laptop1/preflight.sh`; resolve every failure and record its warnings in the deployment record.
 
 ## 5. Prepare Laptop 2
 
@@ -50,6 +51,7 @@ Assign an owner and rotation date to every secret. Only API receives the Hermes 
 2. Obtain a tagged, reviewed release. Copy `infra/docker/compose.laptop2.example.yml` to ignored `compose.laptop2.yml` and `.env.example` to ignored `.env`.
 3. Supply verified deployment values only. Confirm the reverse proxy has no host-published port, no database container exists, and API alone gets the Hermes key.
 4. Start from the reviewed references in `image-inventory.md`. Re-resolve and review digests during an intentional upgrade, then record the deployed image IDs in the release record.
+5. Run `powershell -ExecutionPolicy Bypass -File infra/laptop2/preflight.ps1`; do not deploy while it reports failures.
 
 ## 6. Identity and Hermes gates
 
@@ -60,7 +62,7 @@ For Hermes, verify the exact release's private API binding, persistent state, pr
 ## 7. Configure Cloudflare Tunnel
 
 1. Create a named, least-privilege Tunnel; store credentials outside the repo.
-2. Map only approved app/OIDC hostnames to the private `reverse-proxy:8080` Docker service on Laptop 2.
+2. Map the approved app hostname to `reverse-proxy:8080` and the OIDC hostname to `zitadel-proxy:80` on Laptop 2's private Docker network.
 3. Never map Hermes, Dashboard, PostgreSQL, Docker or admin endpoints.
 4. Install the connector with a restart policy; configure Access/WAF/rate limits as needed.
 5. Verify externally that only intended routes are reachable and no laptop port is public.

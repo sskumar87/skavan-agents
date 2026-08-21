@@ -14,8 +14,9 @@ Laptop 1; the template does not start another PostgreSQL container.
 Create an ignored root `.env` and supply:
 
 - `ZITADEL_DOMAIN`: the public identity hostname, normally `auth.<domain>`;
-- `ZITADEL_MASTERKEY`: exactly 32 securely generated characters, backed up
-  before first initialization because it cannot be changed casually;
+- `ZITADEL_MASTERKEY_FILE`: path to a protected file containing exactly 32
+  securely generated characters, backed up before first initialization because
+  the key cannot be changed casually;
 - `ZITADEL_DATABASE_POSTGRES_DSN`: the dedicated Laptop 1 `zitadel` database
   and non-superuser owner credential;
 - `LOGIN_CLIENT_PAT_EXPIRATION`: a reviewed bootstrap-token expiry; and
@@ -23,8 +24,10 @@ Create an ignored root `.env` and supply:
 
 Use `sslmode=verify-full` with a mounted CA in the final database DSN. The
 example temporarily shows `sslmode=require` because Laptop 1 database TLS
-certificate provisioning is still pending. Never put the DSN or master key in
-Git, screenshots, browser code, or chat.
+certificate provisioning is still pending. Compose mounts the master-key file
+read-only and ZITADEL reads it with `--masterkeyFile`, keeping the key out of
+container command metadata. Never put the DSN or master key in Git,
+screenshots, browser code, or chat.
 
 ## Bootstrap order
 
