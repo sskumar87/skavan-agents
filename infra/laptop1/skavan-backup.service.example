@@ -1,0 +1,16 @@
+[Unit]
+Description=Create a local Skavan PostgreSQL backup
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=shyam
+Group=shyam
+Environment=SKAVAN_DB_CONTAINER=skav-timescaledb
+Environment=SKAVAN_DB_NAME=skavan
+Environment=SKAVAN_BACKUP_DB_USER=skav_user
+Environment=SKAVAN_BACKUP_DIR=/home/shyam/.local/share/skavan-backups
+ExecStart=/usr/local/sbin/backup-skavan
+NoNewPrivileges=true
+PrivateTmp=true

@@ -19,7 +19,7 @@ This is the current execution ledger. It is updated when a component has been ve
 | Component | Next action |
 | --- | --- |
 | Laptop 1 network hardening | Confirm approved Redis/Redis Insight consumers before changing their all-interface bindings. |
-| Backups and recovery | Choose encrypted off-host destination, recovery-key custody, schedule and recovery objectives; then implement an automated backup job and periodic restore test. |
+| Backups and recovery | Local backup and systemd scheduling templates are ready. Choose encrypted off-host destination, recovery-key custody and recovery objectives before enabling the job. |
 | Laptop 2 deployment | Select and pin ZITADEL, Hermes, Nginx and cloudflared releases/images; complete their vendor-specific configuration. |
 | Identity ingress | Choose app/auth hostnames and implement verified ZITADEL public OIDC routing while keeping administration private. |
 
