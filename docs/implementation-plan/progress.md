@@ -14,6 +14,7 @@ This is the current execution ledger. It is updated when a component has been ve
 | Backup and restore rehearsal | A custom-format backup of the empty baseline database was restored into an isolated disposable database; revision `20260821_0001` was verified, then the disposable databases were removed. |
 | Local backup automation | Backup script generated and checksummed a fresh `skavan` dump on Laptop 1 without touching the existing `skav` database. |
 | Reproducible app builds | Latest stable web/API dependencies are locked; production Dockerfiles, health checks and Hermes outbound-only egress are defined. API tests and the Next.js standalone build pass. |
+| Clean-machine CI | GitHub Actions run 32447450529 passed API tests, web audit/type-check/build, full Compose-profile validation and both production container builds. |
 | PostgreSQL network binding | Docker port 5432 is bound to Laptop 1 private address only, preserving Laptop 2 access. |
 | Infrastructure source | Laptop 2 Compose, private ingress and Cloudflare Tunnel templates are committed; public Hermes/PostgreSQL routes are absent. |
 
@@ -25,7 +26,6 @@ This is the current execution ledger. It is updated when a component has been ve
 | Backups and recovery | Product and ZITADEL local backup schedules are templated. Install/verify both timers, then choose encrypted off-host destination, recovery-key custody and recovery objectives before production use. |
 | Laptop 2 deployment | Reviewed release tags and immutable multi-platform digests are recorded. Complete vendor-specific ZITADEL configuration and run Docker Compose/build validation on Laptop 2. |
 | Identity ingress | Choose app/auth hostnames and implement verified ZITADEL public OIDC routing while keeping administration private. |
-| Clean-machine CI | Workflow now checks API tests, web audit/type-check/build, full Compose profiles and both Docker images; first GitHub-hosted run is pending. |
 
 ## Not started
 
@@ -40,7 +40,7 @@ This is the current execution ledger. It is updated when a component has been ve
 
 1. Public application and OIDC hostnames.
 2. Encrypted off-host backup destination, key custody, schedule and recovery objectives.
-3. Approved/pinned ZITADEL and Hermes releases, including their image digests.
+3. Initial Hermes model/provider and credential policy; ZITADEL and Hermes releases and image digests are already pinned.
 4. Whether Redis/Redis Insight require any LAN access beyond Laptop 1.
 
 Until these decisions are made, no API/UI feature is treated as deployable. The infrastructure work continues without exposing secrets or enabling public management routes.
