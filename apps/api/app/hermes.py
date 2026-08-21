@@ -33,6 +33,12 @@ class HermesAdapter:
             raise HermesError("Hermes is not configured.")
         return {"Authorization": f"Bearer {self.api_key}"}
 
+    def request_headers(self, session_key: str | None = None) -> dict[str, str]:
+        headers = self.headers
+        if session_key:
+            headers["X-Hermes-Session-Key"] = session_key
+        return headers
+
     async def health(self) -> bool:
         try:
             async with httpx2.AsyncClient(timeout=5.0) as client:
@@ -41,7 +47,12 @@ class HermesAdapter:
         except (httpx2.HTTPError, HermesError):
             return False
 
-    async def complete(self, messages: list[dict[str, str]]) -> str:
+    async def complete(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        session_key: str | None = None,
+    ) -> str:
         payload = {
             "model": self.model,
             "messages": messages,
@@ -51,7 +62,7 @@ class HermesAdapter:
             async with httpx2.AsyncClient(timeout=300.0) as client:
                 response = await client.post(
                     f"{self.base_url}/v1/chat/completions",
-                    headers=self.headers,
+                    headers=self.request_headers(session_key),
                     json=payload,
                 )
             response.raise_for_status()
@@ -67,7 +78,12 @@ class HermesAdapter:
         except (httpx2.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
             raise HermesError("Hermes is currently unavailable.") from exc
 
-    async def stream(self, messages: list[dict[str, str]]) -> AsyncIterator[str]:
+    async def stream(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        session_key: str,
+    ) -> AsyncIterator[str]:
         payload = {
             "model": self.model,
             "messages": messages,
@@ -80,7 +96,7 @@ class HermesAdapter:
                 async with client.stream(
                     "POST",
                     f"{self.base_url}/v1/chat/completions",
-                    headers=self.headers,
+                    headers=self.request_headers(session_key),
                     json=payload,
                 ) as response:
                     response.raise_for_status()

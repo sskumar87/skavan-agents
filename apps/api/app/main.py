@@ -192,11 +192,14 @@ async def hermes_health(
 @app.post("/api/chat", response_model=ChatResponse, tags=["chat"])
 async def chat(
     request: ChatRequest,
+    x_skavan_user_id: str | None = Header(default=None),
     hermes: HermesAdapter = Depends(get_hermes_adapter),
 ) -> ChatResponse:
+    user_id = require_platform_user_id(x_skavan_user_id)
     try:
         content = await hermes.complete(
-            [message.model_dump() for message in request.messages]
+            [message.model_dump() for message in request.messages],
+            session_key=f"skavan:user:{user_id}",
         )
     except HermesError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -235,7 +238,10 @@ async def stream_chat(
     async def events() -> AsyncIterator[str]:
         assistant_content: list[str] = []
         try:
-            async for content in hermes.stream(hermes_messages):
+            async for content in hermes.stream(
+                hermes_messages,
+                session_key=f"skavan:user:{user_id}",
+            ):
                 assistant_content.append(content)
                 yield format_sse("token", {"content": content})
             if assistant_content:

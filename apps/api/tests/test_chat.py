@@ -4,12 +4,21 @@ from uuid import UUID
 
 from fastapi.testclient import TestClient
 
-from app.hermes import HermesError
+from app.hermes import HermesAdapter, HermesError
 import app.main as main
 from app.main import app, get_hermes_adapter
 
 
 USER_ID = "d34ab70c-4cec-4361-86b2-e3b8c97241ec"
+
+
+def test_hermes_session_key_is_sent_as_a_request_header() -> None:
+    adapter = HermesAdapter(base_url="http://hermes:8642", api_key="a" * 32)
+
+    assert adapter.request_headers(f"skavan:user:{USER_ID}") == {
+        "Authorization": f"Bearer {'a' * 32}",
+        "X-Hermes-Session-Key": f"skavan:user:{USER_ID}",
+    }
 
 
 class FakeSessionContext:
@@ -62,18 +71,27 @@ class FakeHermesAdapter:
     async def health(self) -> bool:
         return True
 
-    async def complete(self, messages: list[dict[str, str]]) -> str:
+    async def complete(
+        self, messages: list[dict[str, str]], *, session_key: str | None = None,
+    ) -> str:
         assert messages == [{"role": "user", "content": "Hello Hermes"}]
+        assert session_key == f"skavan:user:{USER_ID}"
         return "Hello from Hermes"
 
-    async def stream(self, messages: list[dict[str, str]]) -> AsyncIterator[str]:
+    async def stream(
+        self, messages: list[dict[str, str]], *, session_key: str,
+    ) -> AsyncIterator[str]:
         assert messages == [{"role": "user", "content": "Hello Hermes"}]
+        assert session_key == f"skavan:user:{USER_ID}"
         yield "Hello "
         yield "from Hermes"
 
 
 class FailingHermesAdapter:
-    async def stream(self, messages: list[dict[str, str]]) -> AsyncIterator[str]:
+    async def stream(
+        self, messages: list[dict[str, str]], *, session_key: str,
+    ) -> AsyncIterator[str]:
+        assert session_key == f"skavan:user:{USER_ID}"
         if False:
             yield ""
         raise HermesError("Hermes is temporarily unavailable.")
@@ -85,6 +103,7 @@ def test_chat_uses_backend_hermes_adapter() -> None:
         response = TestClient(app).post(
             "/api/chat",
             json={"messages": [{"role": "user", "content": "Hello Hermes"}]},
+            headers={"X-Skavan-User-Id": USER_ID},
         )
     finally:
         app.dependency_overrides.clear()
@@ -93,6 +112,15 @@ def test_chat_uses_backend_hermes_adapter() -> None:
     assert response.json() == {
         "message": {"role": "assistant", "content": "Hello from Hermes"}
     }
+
+
+def test_chat_requires_platform_user() -> None:
+    response = TestClient(app).post(
+        "/api/chat",
+        json={"messages": [{"role": "user", "content": "Hello Hermes"}]},
+    )
+
+    assert response.status_code == 401
 
 
 def test_hermes_health_uses_backend_adapter() -> None:
