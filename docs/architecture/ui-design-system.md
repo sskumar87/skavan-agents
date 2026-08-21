@@ -3,6 +3,15 @@
 Status: **Approved and locked for V1**  
 Approved reference: authenticated workspace prototype agreed on 2026-08-21.
 
+## Visual reference
+
+![Approved authenticated workspace](../ui/mockups/authenticated-workspace-v1.png)
+
+The repository copy above is the canonical V1 visual reference. Its checksum and
+review guidance are recorded in `docs/ui/mockups/README.md`. The written rules in
+this document govern interaction, responsive behavior, accessibility, security
+language, and details that cannot be inferred reliably from a static image.
+
 ## Product shell
 
 The authenticated application uses a responsive, context-first workspace:
