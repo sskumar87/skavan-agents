@@ -7,6 +7,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Skavan Agents",
   description: "Multi-user collaboration powered by Hermes",
+  icons: {
+    icon: [{ url: "/skav-mark.svg", type: "image/svg+xml" }],
+    shortcut: "/skav-mark.svg",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
