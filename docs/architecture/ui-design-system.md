@@ -27,6 +27,15 @@ drawer. Mobile uses one content region at a time with bottom primary navigation;
 thread and context regions become sheets/drawers. No desktop-only workflow is
 permitted.
 
+## Brand contract
+
+The canonical SKAV mark is the geometric wireframe hexagonal cube shown in the
+approved workspace reference. Use `apps/web/public/skav-mark.svg` as the source
+asset. Do not substitute a glowing dot, letter avatar, generic cube icon, or a
+newly improvised mark beside the `SKAV PLATFORM` wordmark. Product avatars and
+status indicators are separate components and must not be presented as the
+brand mark.
+
 ## Theme contract
 
 The supported V1 themes are exactly:

@@ -13,7 +13,7 @@ export default async function LoginPage() {
     <main className="loginShell">
       <section className="loginCard" aria-labelledby="login-title">
         <div className="brand loginBrand">
-          <span className="brandMark" aria-hidden="true">S</span>
+          <img className="brandLogo" src="/skav-mark.svg" alt="" aria-hidden="true" />
           <div><p className="eyebrow">SKAV PLATFORM</p><h1 id="login-title">Agent access</h1></div>
         </div>
         <p className="loginCopy">
@@ -31,7 +31,6 @@ export default async function LoginPage() {
             Login is not configured yet. Add the server-side ZITADEL settings and restart the web service.
           </p>
         )}
-        <p className="loginHint">Authorization Code + PKCE · Encrypted HttpOnly session</p>
       </section>
     </main>
   );

@@ -24,7 +24,7 @@ history. Do not silently overwrite the approved reference.
 
 - File: `../prototypes/login-registration-v1.html`
 - Status: interactive candidate awaiting product approval
-- SHA-256: `E00F5891DFA4A568C7DEC9599715D94A4DD1C6C2624AB7C024F2A7ABC01436BC`
+- SHA-256: `3B90FD8ECA6115E44C7435DF82C74BE023A9292627CD85ACBCDF5F3F8C294DE8`
 - Design contract: `docs/architecture/ui-design-system.md`
 
 The prototype includes sign-in and registration states, responsive reflow,

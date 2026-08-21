@@ -909,7 +909,10 @@ html&gt;body{padding:0}&lt;/style&gt;
   &lt;div class=&quot;skav-auth-window&quot;&gt;
     &lt;header class=&quot;skav-auth-header&quot;&gt;
       &lt;a class=&quot;skav-auth-brand&quot; href=&quot;#&quot; aria-label=&quot;Skav Platform home&quot;&gt;
-        &lt;span class=&quot;skav-auth-orb&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;
+        &lt;svg class=&quot;skav-auth-mark&quot; viewBox=&quot;0 0 40 40&quot; aria-hidden=&quot;true&quot;&gt;
+          &lt;path d=&quot;M20 3 34 11v18L20 37 6 29V11Z&quot;&gt;&lt;/path&gt;
+          &lt;path d=&quot;m20 3 8 5-8 5-8-5Zm14 8-8 5v10l8 3M6 11l8 5v10l-8 3m14 8V23m-6-7 6 7 6-7&quot;&gt;&lt;/path&gt;
+        &lt;/svg&gt;
         &lt;span&gt;SKAV PLATFORM&lt;/span&gt;
       &lt;/a&gt;
       &lt;div class=&quot;skav-auth-themes&quot; aria-label=&quot;Preview theme&quot;&gt;
@@ -924,15 +927,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     &lt;div class=&quot;skav-auth-layout&quot;&gt;
       &lt;section class=&quot;skav-auth-story&quot; aria-label=&quot;Skav Platform introduction&quot;&gt;
         &lt;div class=&quot;skav-auth-scanline&quot; aria-hidden=&quot;true&quot;&gt;&lt;/div&gt;
-        &lt;p class=&quot;skav-auth-kicker&quot;&gt;&lt;span&gt;&lt;/span&gt; HERMES RUNTIME ONLINE&lt;/p&gt;
         &lt;h1&gt;Your private command center for intelligent work.&lt;/h1&gt;
-        &lt;p class=&quot;skav-auth-lead&quot;&gt;One identity for personal agents, collaborative groups, shared context, and secure tool execution.&lt;/p&gt;
-        &lt;div class=&quot;skav-auth-terminal&quot; aria-label=&quot;Platform connection status&quot;&gt;
-          &lt;div&gt;&lt;span&gt;01&lt;/span&gt;&lt;strong&gt;IDENTITY&lt;/strong&gt;&lt;em&gt;OIDC / PKCE&lt;/em&gt;&lt;b&gt;READY&lt;/b&gt;&lt;/div&gt;
-          &lt;div&gt;&lt;span&gt;02&lt;/span&gt;&lt;strong&gt;CONTEXT&lt;/strong&gt;&lt;em&gt;GROUP ISOLATED&lt;/em&gt;&lt;b&gt;LOCKED&lt;/b&gt;&lt;/div&gt;
-          &lt;div&gt;&lt;span&gt;03&lt;/span&gt;&lt;strong&gt;AGENT&lt;/strong&gt;&lt;em&gt;HERMES LINK&lt;/em&gt;&lt;b&gt;ONLINE&lt;/b&gt;&lt;/div&gt;
-        &lt;/div&gt;
-        &lt;p class=&quot;skav-auth-trust&quot;&gt;&lt;i data-lucide=&quot;shield-check&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt; Credentials are handled by the dedicated identity service.&lt;/p&gt;
       &lt;/section&gt;
 
       &lt;section class=&quot;skav-auth-form-shell&quot; aria-label=&quot;Account access&quot;&gt;
@@ -987,7 +982,7 @@ html&gt;body{padding:0}&lt;/style&gt;
       &lt;/section&gt;
     &lt;/div&gt;
 
-    &lt;footer class=&quot;skav-auth-footer&quot;&gt;&lt;span&gt;© 2026 SKAV PLATFORM&lt;/span&gt;&lt;span&gt;ENCRYPTED SESSION · AUTHORIZATION CODE + PKCE&lt;/span&gt;&lt;/footer&gt;
+    &lt;footer class=&quot;skav-auth-footer&quot;&gt;&lt;span&gt;© 2026 SKAV PLATFORM&lt;/span&gt;&lt;/footer&gt;
   &lt;/div&gt;
 &lt;/div&gt;
 
@@ -1039,7 +1034,7 @@ html&gt;body{padding:0}&lt;/style&gt;
     padding: 17px 22px; border-bottom: 1px solid var(--skav-line); background: color-mix(in srgb, var(--skav-bg) 91%, transparent);
   }
   #skav-auth-concept .skav-auth-brand { display: inline-flex; align-items: center; gap: 11px; color: var(--skav-text); text-decoration: none; font: 600 13px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .12em; }
-  #skav-auth-concept .skav-auth-orb { width: 11px; height: 11px; border-radius: 50%; background: var(--skav-accent); box-shadow: 0 0 16px var(--skav-accent); }
+  #skav-auth-concept .skav-auth-mark { width: 26px; height: 26px; fill: none; stroke: var(--skav-accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 6px var(--skav-accent-glow)); }
   #skav-auth-concept .skav-auth-themes { display: flex; align-items: center; gap: 7px; }
   #skav-auth-concept .skav-auth-theme-label { color: var(--skav-muted); font: 500 10px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .15em; margin-right: 4px; }
   #skav-auth-concept .skav-auth-themes button { width: 25px; height: 25px; padding: 4px; border: 1px solid transparent; border-radius: 7px; background: transparent; cursor: pointer; }
@@ -1053,16 +1048,7 @@ html&gt;body{padding:0}&lt;/style&gt;
   #skav-auth-concept .skav-auth-story { position: relative; padding: 64px 7% 50px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
   #skav-auth-concept .skav-auth-story::after { content: &quot;&quot;; position: absolute; width: 420px; height: 420px; border-radius: 50%; left: -210px; bottom: -250px; background: var(--skav-accent-soft); filter: blur(6px); }
   #skav-auth-concept .skav-auth-scanline { position: absolute; inset: 13% 8%; opacity: .34; background: linear-gradient(90deg, transparent, var(--skav-accent-soft), transparent); clip-path: polygon(0 48%,100% 0,100% 3%,0 52%); }
-  #skav-auth-concept .skav-auth-kicker { color: var(--skav-accent); font: 500 11px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .13em; }
-  #skav-auth-concept .skav-auth-kicker span { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--skav-good); box-shadow: 0 0 9px var(--skav-good); margin-right: 6px; }
   #skav-auth-concept .skav-auth-story h1 { max-width: 620px; margin: 18px 0 16px; color: var(--skav-text); font-size: clamp(30px, 4.6vw, 54px); line-height: 1.06; letter-spacing: -.035em; font-weight: 500; }
-  #skav-auth-concept .skav-auth-lead { max-width: 560px; margin: 0; color: var(--skav-muted); font-size: 16px; line-height: 1.65; }
-  #skav-auth-concept .skav-auth-terminal { margin-top: 38px; max-width: 560px; border-top: 1px solid var(--skav-line); }
-  #skav-auth-concept .skav-auth-terminal div { display: grid; grid-template-columns: 30px 1fr 1.2fr auto; gap: 10px; align-items: center; min-height: 43px; border-bottom: 1px solid var(--skav-line); font: 500 10px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .08em; }
-  #skav-auth-concept .skav-auth-terminal span, #skav-auth-concept .skav-auth-terminal em { color: var(--skav-muted); font-style: normal; }
-  #skav-auth-concept .skav-auth-terminal strong { color: var(--skav-text); font-weight: 500; }
-  #skav-auth-concept .skav-auth-terminal b { color: var(--skav-good); font-weight: 500; }
-  #skav-auth-concept .skav-auth-trust { position: relative; z-index: 1; display: flex; align-items: center; gap: 8px; margin: 25px 0 0; color: var(--skav-muted); font-size: 12px; }
   #skav-auth-concept .skav-auth-form-shell { margin: 28px 28px 28px 0; padding: 36px 38px 30px; align-self: center; background: var(--skav-panel); border: 1px solid var(--skav-line); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,.2), 0 0 35px var(--skav-accent-glow); }
   #skav-auth-concept .skav-auth-form-heading &gt; p { display: flex; justify-content: space-between; margin: 0; color: var(--skav-accent); font: 500 10px ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .14em; }
   #skav-auth-concept .skav-auth-form-heading &gt; p span { color: var(--skav-muted); }
@@ -1096,8 +1082,6 @@ html&gt;body{padding:0}&lt;/style&gt;
     #skav-auth-concept .skav-auth-layout { grid-template-columns: 1fr; }
     #skav-auth-concept .skav-auth-story { padding: 34px 24px 24px; }
     #skav-auth-concept .skav-auth-story h1 { font-size: 34px; max-width: 560px; }
-    #skav-auth-concept .skav-auth-lead { font-size: 14px; }
-    #skav-auth-concept .skav-auth-terminal { display: none; }
     #skav-auth-concept .skav-auth-form-shell { margin: 0 18px 24px; padding: 28px 24px 24px; }
   }
   @media (max-width: 460px) {
@@ -1105,7 +1089,6 @@ html&gt;body{padding:0}&lt;/style&gt;
     #skav-auth-concept .skav-auth-header { align-items: flex-start; flex-direction: column; padding: 16px; }
     #skav-auth-concept .skav-auth-story { padding: 27px 18px 20px; }
     #skav-auth-concept .skav-auth-story h1 { font-size: 29px; }
-    #skav-auth-concept .skav-auth-trust { align-items: flex-start; }
     #skav-auth-concept .skav-auth-form-shell { margin: 0 10px 14px; padding: 24px 18px 20px; }
     #skav-auth-concept .skav-auth-name-row { grid-template-columns: 1fr; }
     #skav-auth-concept .skav-auth-options { align-items: flex-start; flex-direction: column; }

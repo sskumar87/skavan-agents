@@ -130,7 +130,7 @@ export function ChatClient({ account }: { account: ReactNode }) {
     <main className="shell">
       <header className="topbar">
         <div className="brand">
-          <span className="brandMark" aria-hidden="true">S</span>
+          <img className="brandLogo" src="/skav-mark.svg" alt="" aria-hidden="true" />
           <div><p className="eyebrow">SKAV PLATFORM</p><h1>Hermes Console</h1></div>
         </div>
         <div className="topbarActions">
