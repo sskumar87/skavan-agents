@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlparse
 from uuid import uuid4
 
 import jwt
@@ -55,7 +56,19 @@ class OidcTokenVerifier:
         self.client_id = os.getenv("OIDC_CLIENT_ID", "")
         if not self.issuer or not self.client_id:
             raise RuntimeError("OIDC_ISSUER_URL and OIDC_CLIENT_ID are required")
-        self.jwks = PyJWKClient(f"{self.issuer}/oauth/v2/keys", cache_keys=True)
+        jwks_url = os.getenv("OIDC_JWKS_URL", f"{self.issuer}/oauth/v2/keys")
+        jwks_headers: dict[str, str] = {}
+        if urlparse(jwks_url).netloc != urlparse(self.issuer).netloc:
+            jwks_headers = {
+                "Host": urlparse(self.issuer).netloc,
+                "X-Forwarded-Host": urlparse(self.issuer).netloc,
+                "X-Forwarded-Proto": urlparse(self.issuer).scheme,
+            }
+        self.jwks = PyJWKClient(
+            jwks_url,
+            cache_keys=True,
+            headers=jwks_headers,
+        )
 
     async def verify(self, token: str) -> VerifiedIdentity:
         try:
