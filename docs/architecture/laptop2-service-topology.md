@@ -3,7 +3,7 @@
 ## Purpose
 
 Laptop 2 runs the product-facing services and the private Hermes runtime
-boundary. Laptop 1 remains the private PostgreSQL + pgvector data node.
+boundary. Laptop 1 remains the private Docker-hosted PostgreSQL + pgvector data node.
 
 ## Service responsibility and exposure
 

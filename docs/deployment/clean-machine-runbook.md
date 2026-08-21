@@ -6,7 +6,7 @@ This is the required release procedure for new machines. Follow it in order; do 
 
 | Machine | Runs | Exposure |
 | --- | --- | --- |
-| Laptop 1 | PostgreSQL + pgvector, ZITADEL database, backups | Private network only |
+| Laptop 1 | Docker-hosted PostgreSQL + pgvector, ZITADEL database, backups | Private network only |
 | Laptop 2 | Cloudflare Tunnel, reverse proxy, web, API, ZITADEL and Hermes | Tunnel is the only public ingress |
 
 The browser path is `Cloudflare → Tunnel → localhost-only reverse proxy → web/API`. The API alone calls Hermes. Hermes Dashboard is for trusted operators over private network/VPN; it is never a normal-user route. Redis and Kubernetes are not V1 requirements.
@@ -17,7 +17,7 @@ Record before installation:
 
 1. Stable private networking, reserved addresses/internal DNS, firewall authority and time sync for both laptops.
 2. Cloudflare account/domain, Tunnel authority and final public hostnames for app and OIDC issuer.
-3. Supported PostgreSQL + pgvector, Docker Engine + Compose on Laptop 2, and a separate encrypted backup destination.
+3. Docker Engine + Compose on both laptops, a supported PostgreSQL + pgvector container image, and a separate encrypted backup destination.
 4. Chosen, pinned, supported ZITADEL and Hermes releases; review their vendor instructions before enabling their profiles.
 5. Operational owner, monitoring destination, recovery objectives, maintenance window and trusted operator access method.
 
@@ -38,8 +38,8 @@ Assign an owner and rotation date to every secret. Only API receives the Hermes 
 ## 4. Prepare Laptop 1
 
 1. Patch the OS; enable time sync, encrypted storage and restricted administration.
-2. Install PostgreSQL and pgvector; create separate product/ZITADEL databases and non-superuser roles.
-3. Bind PostgreSQL only to its private interface; permit only Laptop 2's private address, require TLS and never expose/forward port 5432.
+2. Install Docker Engine + Compose and run PostgreSQL + pgvector as a dedicated container with durable encrypted host storage. Create separate product/ZITADEL databases and non-superuser roles.
+3. Bind the database container only to Laptop 1's private interface; permit only Laptop 2's private address, require TLS and never expose/forward port 5432.
 4. Create a migration role permitted to install `vector`, plus a restricted API runtime role.
 5. Test authenticated TLS connections from Laptop 2.
 6. Configure encrypted backups plus WAL/PITR to a location outside Laptop 1. Prove a restore before accepting production data.
