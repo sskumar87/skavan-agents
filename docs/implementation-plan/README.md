@@ -4,6 +4,8 @@ Work in thin vertical slices, with tests added alongside each slice.
 
 See the [component-by-component work breakdown](work-breakdown.md) for dependencies, deliverables and release gates.
 
+See [delivery progress](progress.md) for the current verified execution status.
+
 1. **Foundation** — repository, architecture records, service boundaries and migration baseline.
 2. **Identity** — ZITADEL OIDC sign-up/login and backend session validation.
 3. **Groups** — memberships, roles and server-side authorization.
