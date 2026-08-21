@@ -15,9 +15,16 @@ export default async function LoginPage() {
     await signIn("zitadel", { redirectTo: "/" });
   }
 
-  async function registerAction() {
+  async function registerAction(formData: FormData) {
     "use server";
-    await signIn("zitadel", { redirectTo: "/" }, { prompt: "create" });
+    const email = String(formData.get("email") ?? "").trim().toLowerCase();
+    if (!email || email.length > 254 || !email.includes("@")) redirect("/login");
+
+    await signIn(
+      "zitadel",
+      { redirectTo: "/" },
+      { prompt: "create", login_hint: email },
+    );
   }
 
   return <AuthShell configured={configured} signInAction={signInAction} registerAction={registerAction} />;

@@ -12,7 +12,7 @@ const themes = [
 type AuthShellProps = {
   configured: boolean;
   signInAction: () => Promise<void>;
-  registerAction: () => Promise<void>;
+  registerAction: (formData: FormData) => Promise<void>;
 };
 
 export function AuthShell({ configured, signInAction, registerAction }: AuthShellProps) {
@@ -70,11 +70,23 @@ export function AuthShell({ configured, signInAction, registerAction }: AuthShel
             {configured ? (
               mode === "signin" ? (
                 <form action={signInAction} className="authActionForm">
-                  <button className="uiPrimaryAction" type="submit">Continue to sign in <ArrowIcon /></button>
+                  <button className="uiPrimaryAction" type="submit">Sign in <ArrowIcon /></button>
                 </form>
               ) : (
-                <form action={registerAction} className="authActionForm">
-                  <button className="uiPrimaryAction" type="submit">Continue to registration <ArrowIcon /></button>
+                <form action={registerAction} className="authActionForm authRegistrationForm">
+                  <label className="uiField">
+                    Email address
+                    <input
+                      className="uiInput"
+                      type="email"
+                      name="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      required
+                    />
+                  </label>
+                  <button className="uiPrimaryAction" type="submit">Create account <ArrowIcon /></button>
                 </form>
               )
             ) : (
