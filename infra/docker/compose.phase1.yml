@@ -22,12 +22,12 @@ services:
     environment:
       NODE_ENV: production
       API_BASE_URL: http://api:8000
+      AUTH_URL: ${APP_ORIGIN:?Configure the public application origin}
       AUTH_SECRET: ${AUTH_SECRET:?Configure ZITADEL login first}
       AUTH_TRUST_HOST: "true"
       AUTH_SESSION_MAX_AGE: ${AUTH_SESSION_MAX_AGE:-3600}
       ZITADEL_ISSUER_URL: ${ZITADEL_ISSUER_URL:?Configure ZITADEL login first}
       ZITADEL_CLIENT_ID: ${ZITADEL_CLIENT_ID:?Configure ZITADEL login first}
-      ZITADEL_CLIENT_SECRET: ${ZITADEL_CLIENT_SECRET:?Configure ZITADEL login first}
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:3000/"]
       interval: 10s
@@ -121,9 +121,9 @@ services:
     command: start-from-init --masterkeyFile /run/secrets/zitadel-masterkey
     environment:
       ZITADEL_PORT: 8080
-      ZITADEL_EXTERNALDOMAIN: auth.localhost
-      ZITADEL_EXTERNALPORT: 8081
-      ZITADEL_EXTERNALSECURE: "false"
+      ZITADEL_EXTERNALDOMAIN: ${ZITADEL_DOMAIN:?Configure the ZITADEL hostname}
+      ZITADEL_EXTERNALPORT: ${ZITADEL_EXTERNAL_PORT:-443}
+      ZITADEL_EXTERNALSECURE: ${ZITADEL_EXTERNAL_SECURE:-true}
       ZITADEL_TLS_ENABLED: "false"
       ZITADEL_DATABASE_POSTGRES_DSN: ${ZITADEL_DATABASE_POSTGRES_DSN:?Configure the Laptop 1 ZITADEL database}
       ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: ${ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD:?Configure the initial ZITADEL administrator}
@@ -133,10 +133,10 @@ services:
       ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_NAME: Skavan Login Client
       ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_PAT_EXPIRATIONDATE: ${LOGIN_CLIENT_PAT_EXPIRATION:-2027-08-21T00:00:00Z}
       ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "true"
-      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI: http://auth.localhost:8081/ui/v2/login/
-      ZITADEL_OIDC_DEFAULTLOGINURLV2: http://auth.localhost:8081/ui/v2/login/login?authRequest=
-      ZITADEL_OIDC_DEFAULTLOGOUTURLV2: http://auth.localhost:8081/ui/v2/login/logout?post_logout_redirect=
-      ZITADEL_SAML_DEFAULTLOGINURLV2: http://auth.localhost:8081/ui/v2/login/login?samlRequest=
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI: ${ZITADEL_ISSUER_URL:?Configure the ZITADEL issuer}/ui/v2/login/
+      ZITADEL_OIDC_DEFAULTLOGINURLV2: ${ZITADEL_ISSUER_URL:?Configure the ZITADEL issuer}/ui/v2/login/login?authRequest=
+      ZITADEL_OIDC_DEFAULTLOGOUTURLV2: ${ZITADEL_ISSUER_URL:?Configure the ZITADEL issuer}/ui/v2/login/logout?post_logout_redirect=
+      ZITADEL_SAML_DEFAULTLOGINURLV2: ${ZITADEL_ISSUER_URL:?Configure the ZITADEL issuer}/ui/v2/login/login?samlRequest=
       ZITADEL_LOGSTORE_ACCESS_STDOUT_ENABLED: "true"
     volumes:
       - zitadel-bootstrap:/zitadel/bootstrap
@@ -154,12 +154,12 @@ services:
       - traefik.http.services.zitadel-api.loadbalancer.server.port=8080
       - traefik.http.services.zitadel-api.loadbalancer.server.scheme=h2c
       - traefik.http.middlewares.zitadel-strip-api.stripprefix.prefixes=/api
-      - traefik.http.routers.zitadel-api-alias.rule=Host(`auth.localhost`) && PathPrefix(`/api`)
+      - traefik.http.routers.zitadel-api-alias.rule=Host(`${ZITADEL_DOMAIN}`) && PathPrefix(`/api`)
       - traefik.http.routers.zitadel-api-alias.entrypoints=web
       - traefik.http.routers.zitadel-api-alias.middlewares=zitadel-strip-api
       - traefik.http.routers.zitadel-api-alias.service=zitadel-api
       - traefik.http.routers.zitadel-api-alias.priority=200
-      - traefik.http.routers.zitadel-canonical.rule=Host(`auth.localhost`) && !PathPrefix(`/ui/v2/login`) && !PathPrefix(`/api`) && !Path(`/`)
+      - traefik.http.routers.zitadel-canonical.rule=Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/ui/v2/login`) && !PathPrefix(`/api`) && !Path(`/`)
       - traefik.http.routers.zitadel-canonical.entrypoints=web
       - traefik.http.routers.zitadel-canonical.service=zitadel-api
       - traefik.http.routers.zitadel-canonical.priority=100
@@ -173,7 +173,7 @@ services:
       ZITADEL_API_URL: http://zitadel-api:8080
       NEXT_PUBLIC_BASE_PATH: /ui/v2/login
       ZITADEL_SERVICE_USER_TOKEN_FILE: /zitadel/bootstrap/login-client.pat
-      CUSTOM_REQUEST_HEADERS: Host:auth.localhost,X-Forwarded-Proto:http
+      CUSTOM_REQUEST_HEADERS: Host:${ZITADEL_DOMAIN},X-Forwarded-Proto:${ZITADEL_EXTERNAL_SCHEME:-https}
     volumes:
       - zitadel-bootstrap:/zitadel/bootstrap:ro
     depends_on:
@@ -191,12 +191,12 @@ services:
       - traefik.docker.network=skavan-phase1-identity
       - traefik.http.services.zitadel-login.loadbalancer.server.port=3000
       - traefik.http.middlewares.zitadel-root-rewrite.replacepath.path=/ui/v2/login/
-      - traefik.http.routers.zitadel-root.rule=Host(`auth.localhost`) && Path(`/`)
+      - traefik.http.routers.zitadel-root.rule=Host(`${ZITADEL_DOMAIN}`) && Path(`/`)
       - traefik.http.routers.zitadel-root.entrypoints=web
       - traefik.http.routers.zitadel-root.middlewares=zitadel-root-rewrite
       - traefik.http.routers.zitadel-root.service=zitadel-login
       - traefik.http.routers.zitadel-root.priority=400
-      - traefik.http.routers.zitadel-login.rule=Host(`auth.localhost`) && PathPrefix(`/ui/v2/login`)
+      - traefik.http.routers.zitadel-login.rule=Host(`${ZITADEL_DOMAIN}`) && PathPrefix(`/ui/v2/login`)
       - traefik.http.routers.zitadel-login.entrypoints=web
       - traefik.http.routers.zitadel-login.service=zitadel-login
       - traefik.http.routers.zitadel-login.priority=250

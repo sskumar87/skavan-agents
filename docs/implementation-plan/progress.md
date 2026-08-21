@@ -17,6 +17,7 @@ This is the current execution ledger. It is updated when a component has been ve
 | Clean-machine CI | GitHub Actions run 32447450529 passed API tests, web audit/type-check/build, full Compose-profile validation and both production container builds. |
 | PostgreSQL network binding | Docker port 5432 is bound to Laptop 1 private address only, preserving Laptop 2 access. |
 | Infrastructure source | Laptop 2 Compose, private ingress and Cloudflare Tunnel templates are committed; public Hermes/PostgreSQL routes are absent. |
+| ZITADEL application registration | `Skavan Platform` project and `Skavan Web` Authorization Code + PKCE client created with exact `https://skavan.skavapp.com` callback/logout URIs; no client secret or product-role claims are enabled. |
 
 ## In progress
 
@@ -24,8 +25,8 @@ This is the current execution ledger. It is updated when a component has been ve
 | --- | --- |
 | Laptop 1 network hardening | Confirm approved Redis/Redis Insight consumers before changing their all-interface bindings. |
 | Backups and recovery | Enable user lingering for unattended timers, then choose encrypted off-host destination, recovery-key custody, disk/backup-failure alerting, retention and recovery objectives before production use. |
-| Laptop 2 deployment | Reviewed release tags and immutable multi-platform digests are recorded. Complete vendor-specific ZITADEL configuration and run Docker Compose/build validation on Laptop 2. |
-| Identity ingress | Choose app/auth hostnames and implement verified ZITADEL public OIDC routing while keeping administration private. |
+| Laptop 2 deployment | Reviewed release tags and immutable multi-platform digests are recorded. Recreate the web/identity services with the protected environment and run the on-machine Compose validation. |
+| Identity ingress | Public hosts are `skavan.skavapp.com` and `auth.skavapp.com`. Verify public discovery, login, callback, logout and management-path restrictions after the identity restart. |
 
 ## Not started
 
@@ -38,9 +39,7 @@ This is the current execution ledger. It is updated when a component has been ve
 
 ## Decisions still required
 
-1. Public application and OIDC hostnames.
-2. Encrypted off-host backup destination, key custody, schedule and recovery objectives.
-3. Initial Hermes model/provider and credential policy; ZITADEL and Hermes releases and image digests are already pinned.
-4. Whether Redis/Redis Insight require any LAN access beyond Laptop 1.
+1. Encrypted off-host backup destination, key custody, schedule and recovery objectives.
+2. Whether Redis/Redis Insight require any LAN access beyond Laptop 1.
 
 Until these decisions are made, no API/UI feature is treated as deployable. The infrastructure work continues without exposing secrets or enabling public management routes.

@@ -4,12 +4,13 @@ Self-hosted ZITADEL is the OIDC/OAuth2 identity provider. This platform maps
 the immutable OIDC `sub` to its own user record and evaluates product
 authorization locally.
 
-## Phase 1 local login
+## Phase 1 login
 
-The minimal Laptop 2 flow uses `http://auth.localhost:8081` and the existing
-Laptop 1 PostgreSQL server. It does not start another PostgreSQL container.
-Use `http://localhost:8080` (not the numeric loopback address) for the Skavan
-application while testing OIDC so its callback and cookies use one hostname.
+The minimal Laptop 2 flow uses the existing Laptop 1 PostgreSQL server and does
+not start another PostgreSQL container. For local-only bootstrap, use
+`http://auth.localhost:8081` and `http://localhost:8080`. For a Cloudflare
+Tunnel deployment, configure the final HTTPS application and identity
+hostnames before restarting the identity profile.
 
 Before starting the `identity` profile:
 
@@ -26,18 +27,22 @@ Before starting the `identity` profile:
    back up the master key because it cannot be changed after initialization.
 4. Start `docker compose --env-file <protected-env> -f
    infra/docker/compose.phase1.yml --profile identity up -d --wait`.
-5. Open `http://auth.localhost:8081/ui/console` and create a project plus a Web
-   OIDC application using Authorization Code + PKCE and development mode.
-6. Register redirect URI
-   `http://localhost:8080/auth/callback/zitadel`. Register post-logout URI
-   `http://localhost:8080/login`.
+5. Open the ZITADEL console and create a project plus a Web OIDC application
+   using Authorization Code + PKCE. Authentication Method must be `None`.
+6. Register exact callback and logout URIs for the selected origin. For the
+   public Skavan deployment these are
+   `https://skavan.skavapp.com/auth/callback/zitadel` and
+   `https://skavan.skavapp.com/login`.
 7. Put the generated client ID in `ZITADEL_CLIENT_ID` in the protected `.env`,
    then rebuild the web service. The setup script has already generated the
-   remaining local authentication values.
+   remaining authentication values. PKCE clients do not use a client secret.
 
 The local HTTP configuration is strictly a Laptop 2 bootstrap mode. Cloudflare
 deployment uses a final `https://auth.<domain>` issuer and exact HTTPS callback
-URLs; do not enable ZITADEL development mode there.
+URLs; do not enable ZITADEL development mode there. Set `APP_ORIGIN`,
+`ZITADEL_DOMAIN`, `ZITADEL_ISSUER_URL`, `ZITADEL_EXTERNAL_PORT`,
+`ZITADEL_EXTERNAL_SECURE`, and `ZITADEL_EXTERNAL_SCHEME` in the protected
+environment file before recreating the web and identity services.
 
 The Laptop 2 Compose template follows ZITADEL v4.17.1's production-like
 lifecycle: `zitadel-init`, `zitadel-setup`, `zitadel-api`, `zitadel-login`, and

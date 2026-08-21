@@ -2,7 +2,9 @@
 param(
     [string]$SecretDirectory = "C:\SKAV_PLATFORM\secrets\skavan-phase1",
     [string]$DatabaseHost = "192.168.1.49",
-    [int]$DatabasePort = 5432
+    [int]$DatabasePort = 5432,
+    [string]$AppOrigin = "http://localhost:8080",
+    [string]$ZitadelIssuerUrl = "http://auth.localhost:8081"
 )
 
 $ErrorActionPreference = "Stop"
@@ -64,7 +66,14 @@ if ($adminPassword.Length -lt 12 -or $adminPassword -notmatch '[A-Z]' -or $admin
 
 $masterKey = New-HexSecret 16
 $authSecret = New-HexSecret 32
-$oidcLibrarySecret = New-HexSecret 32
+$issuerUri = [Uri]$ZitadelIssuerUrl
+$issuerUrl = $issuerUri.AbsoluteUri.TrimEnd('/')
+$externalSecure = if ($issuerUri.Scheme -eq 'https') { 'true' } else { 'false' }
+$externalPort = if ($issuerUri.IsDefaultPort) {
+    if ($issuerUri.Scheme -eq 'https') { 443 } else { 80 }
+} else {
+    $issuerUri.Port
+}
 $encodedDatabasePassword = [Uri]::EscapeDataString($databasePassword)
 $databaseDsn = "postgresql://zitadel:$encodedDatabasePassword@$DatabaseHost`:$DatabasePort/zitadel?sslmode=disable"
 
@@ -72,9 +81,13 @@ Set-Content -LiteralPath $masterKeyFile -Value $masterKey -NoNewline -Encoding a
 Set-EnvironmentValue $environmentFile "AUTH_SECRET" $authSecret
 Set-EnvironmentValue $environmentFile "AUTH_TRUST_HOST" "true"
 Set-EnvironmentValue $environmentFile "AUTH_SESSION_MAX_AGE" "3600"
-Set-EnvironmentValue $environmentFile "ZITADEL_ISSUER_URL" "http://auth.localhost:8081"
+Set-EnvironmentValue $environmentFile "APP_ORIGIN" $AppOrigin.TrimEnd('/')
+Set-EnvironmentValue $environmentFile "ZITADEL_DOMAIN" $issuerUri.Host
+Set-EnvironmentValue $environmentFile "ZITADEL_EXTERNAL_PORT" "$externalPort"
+Set-EnvironmentValue $environmentFile "ZITADEL_EXTERNAL_SECURE" $externalSecure
+Set-EnvironmentValue $environmentFile "ZITADEL_EXTERNAL_SCHEME" $issuerUri.Scheme
+Set-EnvironmentValue $environmentFile "ZITADEL_ISSUER_URL" $issuerUrl
 Set-EnvironmentValue $environmentFile "ZITADEL_CLIENT_ID" "bootstrap-pending"
-Set-EnvironmentValue $environmentFile "ZITADEL_CLIENT_SECRET" $oidcLibrarySecret
 Set-EnvironmentValue $environmentFile "ZITADEL_DATABASE_POSTGRES_DSN" $databaseDsn
 Set-EnvironmentValue $environmentFile "ZITADEL_MASTERKEY_FILE" ($masterKeyFile -replace '\\', '/')
 Set-EnvironmentValue $environmentFile "ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD" $adminPassword
