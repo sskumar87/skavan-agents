@@ -22,7 +22,7 @@ This is the current execution ledger. It is updated when a component has been ve
 | --- | --- |
 | Laptop 1 network hardening | Confirm approved Redis/Redis Insight consumers before changing their all-interface bindings. |
 | Backups and recovery | Install the verified service/timer, then choose encrypted off-host destination, recovery-key custody and recovery objectives before enabling scheduled backups. |
-| Laptop 2 deployment | Resolve immutable image digests for ZITADEL, Hermes, Nginx, cloudflared, Node and Python on Laptop 2; complete vendor-specific identity configuration and run Compose validation. |
+| Laptop 2 deployment | Reviewed release tags and immutable multi-platform digests are recorded. Complete vendor-specific ZITADEL configuration and run Docker Compose/build validation on Laptop 2. |
 | Identity ingress | Choose app/auth hostnames and implement verified ZITADEL public OIDC routing while keeping administration private. |
 
 ## Not started

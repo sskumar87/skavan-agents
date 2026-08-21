@@ -6,4 +6,6 @@ credentials-file: /etc/cloudflared/<tunnel-uuid>.json
 ingress:
   - hostname: app.example.com
     service: http://reverse-proxy:8080
+  - hostname: auth.example.com
+    service: http://zitadel-proxy:80
   - service: http_status:404

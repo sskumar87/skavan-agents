@@ -2,17 +2,20 @@
 
 Cloudflare Tunnel is the V1 public boundary. Laptop 2 makes an outbound tunnel
 connection to Cloudflare. Cloudflare delivers traffic across that connection to
-the reverse proxy on the Docker `edge` network. That network allows outbound
-Cloudflare connectivity for `cloudflared`, but has no host-published ports.
+two reviewed proxies on the Docker `edge` network: the product reverse proxy
+and ZITADEL's HTTP/2-capable proxy. The network has no host-published ports.
 
 ```text
 Browser --> HTTPS --> Cloudflare --> outbound tunnel --> cloudflared
-                                                    --> reverse proxy --> web / API
+                                                    |-> reverse proxy --> web / API
+                                                    `-> ZITADEL proxy --> OIDC / login
 ```
 
-The browser has no route to Hermes, PostgreSQL, Docker, or the identity-provider
-administration surface. The reverse proxy has no route to Hermes. The FastAPI
-backend alone calls Hermes using server-held credentials on a private network.
+The browser has no route to Hermes, PostgreSQL or Docker. ZITADEL's public OIDC
+and login paths use a dedicated hostname; operator/management paths require an
+additional Cloudflare Access policy. The product reverse proxy has no route to
+Hermes. The FastAPI backend alone calls Hermes using server-held credentials
+on a private network.
 
 ## Public and private surfaces
 
@@ -20,8 +23,9 @@ backend alone calls Hermes using server-held credentials on a private network.
 | --- | --- | --- |
 | Web application | `/` | Product authentication and authorization |
 | Platform API | `/api/` | Product authentication and authorization |
+| ZITADEL OIDC/login | Dedicated `auth.<domain>` hostname | Public protocol paths; ZITADEL authentication |
 | Hermes API, Gateway, Dashboard | None | Internal network; dashboard also trusted network/VPN |
-| ZITADEL administration | None | Trusted operator network only |
+| ZITADEL management paths | Auth hostname with Access restriction | Trusted operators only |
 | PostgreSQL + pgvector | None | Private Laptop 1 network only |
 
 Tunnel credentials are host secrets, never repository configuration. Rotate the

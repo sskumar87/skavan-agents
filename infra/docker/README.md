@@ -6,18 +6,19 @@ small, private service deployment—not Kubernetes and not a database provisione
 ## Boundaries
 
 ```text
-Internet -> Cloudflare Tunnel -> reverse proxy (127.0.0.1 only)
-                                  |-> web
-                                  |-> API -> Hermes API/runtime/gateway
-                                  |-> ZITADEL public OIDC endpoints
+Internet -> Cloudflare Tunnel -> product reverse proxy -> web / API
+                              `-> ZITADEL proxy -> OIDC API / Login
+
+API -> private-services -> Hermes API/runtime/gateway
+Hermes -> service-egress -> approved cloud model/providers
 
 Laptop 1 private network <- API and ZITADEL -> PostgreSQL + pgvector
 ```
 
 - PostgreSQL and pgvector remain on Laptop 1. Compose deliberately has no
   PostgreSQL service and no published database port.
-- The browser reaches only the reverse-proxy routes. It never reaches Hermes or
-  uses a Hermes server key.
+- The browser reaches only the product and ZITADEL proxy routes. It never
+  reaches Hermes or uses a Hermes server key.
 - Hermes API, Gateway, Dashboard, and any agent tool access remain on the
   `private-services` network. The Dashboard must be separately restricted to
   trusted operators/VPN and is not proxied here.
@@ -31,14 +32,14 @@ Laptop 1 private network <- API and ZITADEL -> PostgreSQL + pgvector
    values and secrets through the chosen secret-management process.
 3. Confirm Laptop 2 can privately reach Laptop 1 PostgreSQL using TLS and a
    least-privilege database account.
-4. Pin and verify the selected ZITADEL and Hermes images/configuration. The
-   `identity` and `hermes` profiles intentionally cannot start until this work
-   is complete.
-5. Configure Cloudflare Tunnel to forward to `http://127.0.0.1:<port>` only.
+4. Review the immutable image inventory. The `identity` and `hermes` profiles
+   remain opt-in until their secrets and bootstrap configuration are complete.
+5. Configure Cloudflare Tunnel's app hostname for `reverse-proxy:8080` and auth
+   hostname for `zitadel-proxy:80` on the private `edge` network.
 
 ## Deliberate TODOs
 
-The exact supported ZITADEL bootstrap/configuration, Hermes image/command,
-Hermes Gateway channel configuration, and production TLS/trusted-proxy settings
-depend on their verified upstream documentation and the deployment's private
-hostnames. They must be added as reviewed configuration, never guessed here.
+The final public hostnames, Laptop 1 database TLS/CA configuration, OIDC client
+registration, Hermes model-provider credentials and Gateway channel setup are
+deployment inputs. Telegram/WhatsApp and the Hermes Dashboard remain disabled
+until their authorization and trusted-access work is delivered.

@@ -1,5 +1,26 @@
 name: skavan-platform
 
+x-zitadel-db-env: &zitadel-db-env
+  ZITADEL_DATABASE_POSTGRES_DSN: ${ZITADEL_DATABASE_POSTGRES_DSN}
+
+x-zitadel-runtime-env: &zitadel-runtime-env
+  <<: *zitadel-db-env
+  ZITADEL_EXTERNALDOMAIN: ${ZITADEL_DOMAIN}
+  ZITADEL_EXTERNALPORT: 443
+  ZITADEL_EXTERNALSECURE: "true"
+  ZITADEL_TLS_ENABLED: "false"
+  ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: "false"
+  ZITADEL_FIRSTINSTANCE_LOGINCLIENTPATPATH: /zitadel/bootstrap/login-client.pat
+  ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_USERNAME: login-client
+  ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_NAME: Skavan Login Client
+  ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_PAT_EXPIRATIONDATE: ${LOGIN_CLIENT_PAT_EXPIRATION}
+  ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "true"
+  ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI: https://${ZITADEL_DOMAIN}/ui/v2/login/
+  ZITADEL_OIDC_DEFAULTLOGINURLV2: https://${ZITADEL_DOMAIN}/ui/v2/login/login?authRequest=
+  ZITADEL_OIDC_DEFAULTLOGOUTURLV2: https://${ZITADEL_DOMAIN}/ui/v2/login/logout?post_logout_redirect=
+  ZITADEL_SAML_DEFAULTLOGINURLV2: https://${ZITADEL_DOMAIN}/ui/v2/login/login?samlRequest=
+  ZITADEL_LOGSTORE_ACCESS_STDOUT_ENABLED: "true"
+
 # Laptop 2 service topology template.
 # Copy to compose.laptop2.yml and supply values through a local .env file.
 # Deployment values, image tags and immutable digests belong in the ignored
@@ -82,26 +103,140 @@ services:
       start_period: 10s
       retries: 3
 
-  # ZITADEL deployment shape, not a ready-to-run configuration. Its database is
-  # also hosted privately on Laptop 1. Pin the chosen supported image version
-  # and provide its documented configuration before enabling this service.
-  zitadel:
+  # ZITADEL v4 vendor lifecycle adapted for the remote Laptop 1 database.
+  # The identity profile must be bootstrapped before normal application use.
+  zitadel-init:
+    image: ${ZITADEL_IMAGE:?Set a pinned, supported ZITADEL_IMAGE locally}
+    profiles: ["identity"]
+    restart: "no"
+    command: init
+    environment:
+      <<: *zitadel-db-env
+    networks:
+      - service-egress
+
+  zitadel-setup:
+    image: ${ZITADEL_IMAGE:?Set a pinned, supported ZITADEL_IMAGE locally}
+    profiles: ["identity"]
+    restart: "no"
+    command: setup --masterkey "${ZITADEL_MASTERKEY}"
+    environment:
+      <<: *zitadel-runtime-env
+    volumes:
+      - zitadel-bootstrap:/zitadel/bootstrap
+    depends_on:
+      zitadel-init:
+        condition: service_completed_successfully
+    networks:
+      - service-egress
+
+  zitadel-api:
     image: ${ZITADEL_IMAGE:?Set a pinned, supported ZITADEL_IMAGE locally}
     profiles: ["identity"]
     restart: unless-stopped
-    env_file:
-      - ../../.env
+    command: start --masterkey "${ZITADEL_MASTERKEY}"
     environment:
-      ZITADEL_EXTERNALDOMAIN: ${ZITADEL_EXTERNALDOMAIN}
-      ZITADEL_EXTERNALPORT: ${ZITADEL_EXTERNALPORT:-443}
-      ZITADEL_DATABASE_POSTGRES_HOST: ${ZITADEL_DATABASE_POSTGRES_HOST}
-      ZITADEL_DATABASE_POSTGRES_PORT: ${ZITADEL_DATABASE_POSTGRES_PORT:-5432}
-      ZITADEL_DATABASE_POSTGRES_DATABASE: ${ZITADEL_DATABASE_POSTGRES_DATABASE}
-      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: ${ZITADEL_DATABASE_POSTGRES_USER_USERNAME}
-      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: ${ZITADEL_DATABASE_POSTGRES_USER_PASSWORD}
+      <<: *zitadel-runtime-env
+      ZITADEL_PORT: 8080
+    volumes:
+      - zitadel-bootstrap:/zitadel/bootstrap
+    depends_on:
+      zitadel-init:
+        condition: service_completed_successfully
+      zitadel-setup:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "/app/zitadel", "ready"]
+      interval: 10s
+      timeout: 30s
+      start_period: 20s
+      retries: 12
     networks:
-      - app
-      - private-services
+      - edge
+      - service-egress
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=skavan-edge
+      - traefik.http.services.zitadel-api.loadbalancer.server.port=8080
+      - traefik.http.services.zitadel-api.loadbalancer.server.scheme=h2c
+      - traefik.http.middlewares.zitadel-strip-api.stripprefix.prefixes=/api
+      - traefik.http.middlewares.zitadel-strip-api.stripprefix.forceSlash=false
+      - traefik.http.routers.zitadel-api-alias.rule=Host(`${ZITADEL_DOMAIN}`) && PathPrefix(`/api`)
+      - traefik.http.routers.zitadel-api-alias.entrypoints=web
+      - traefik.http.routers.zitadel-api-alias.middlewares=zitadel-strip-api
+      - traefik.http.routers.zitadel-api-alias.service=zitadel-api
+      - traefik.http.routers.zitadel-api-alias.priority=200
+      - traefik.http.routers.zitadel-canonical.rule=Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/ui/v2/login`) && !PathPrefix(`/api`) && !Path(`/`)
+      - traefik.http.routers.zitadel-canonical.entrypoints=web
+      - traefik.http.routers.zitadel-canonical.service=zitadel-api
+      - traefik.http.routers.zitadel-canonical.priority=100
+
+  zitadel-login:
+    image: ${ZITADEL_LOGIN_IMAGE:?Set a pinned ZITADEL_LOGIN_IMAGE locally}
+    profiles: ["identity"]
+    restart: unless-stopped
+    environment:
+      ZITADEL_API_URL: http://zitadel-api:8080
+      NEXT_PUBLIC_BASE_PATH: /ui/v2/login
+      ZITADEL_SERVICE_USER_TOKEN_FILE: /zitadel/bootstrap/login-client.pat
+      CUSTOM_REQUEST_HEADERS: Host:${ZITADEL_DOMAIN},X-Forwarded-Proto:https
+    volumes:
+      - zitadel-bootstrap:/zitadel/bootstrap:ro
+    depends_on:
+      zitadel-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/bin/sh", "-c", "node /app/healthcheck.mjs http://localhost:3000/ui/v2/login/healthy"]
+      interval: 10s
+      timeout: 30s
+      start_period: 20s
+      retries: 12
+    networks:
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=skavan-edge
+      - traefik.http.services.zitadel-login.loadbalancer.server.port=3000
+      - traefik.http.middlewares.zitadel-root-rewrite.replacepath.path=/ui/v2/login/
+      - traefik.http.routers.zitadel-root.rule=Host(`${ZITADEL_DOMAIN}`) && Path(`/`)
+      - traefik.http.routers.zitadel-root.entrypoints=web
+      - traefik.http.routers.zitadel-root.middlewares=zitadel-root-rewrite
+      - traefik.http.routers.zitadel-root.service=zitadel-login
+      - traefik.http.routers.zitadel-root.priority=400
+      - traefik.http.routers.zitadel-login.rule=Host(`${ZITADEL_DOMAIN}`) && PathPrefix(`/ui/v2/login`)
+      - traefik.http.routers.zitadel-login.entrypoints=web
+      - traefik.http.routers.zitadel-login.service=zitadel-login
+      - traefik.http.routers.zitadel-login.priority=250
+
+  zitadel-proxy:
+    image: ${TRAEFIK_IMAGE:?Set a pinned TRAEFIK_IMAGE locally}
+    profiles: ["identity"]
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=skavan-edge
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.forwardedHeaders.trustedIPs=${TRAEFIK_TRUSTED_IPS:-172.16.0.0/12}
+      - --api.dashboard=false
+      - --api.insecure=false
+      - --ping=true
+      - --ping.entrypoint=web
+      - --accesslog=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      zitadel-api:
+        condition: service_healthy
+      zitadel-login:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 6
+    networks:
+      - edge
 
   # Hermes is deliberately represented as an internal-only boundary. Add its
   # exact upstream image/command/config only after those runtime choices are
@@ -126,7 +261,8 @@ services:
 
 networks:
   # Sole ingress path: Cloudflare Tunnel -> reverse proxy.
-  edge: {}
+  edge:
+    name: skavan-edge
   # Reverse proxy, web, API and ZITADEL's browser-facing OIDC endpoints.
   app: {}
   # API-to-Hermes, API-to-Laptop-1 PostgreSQL, and service administration only.
@@ -138,3 +274,4 @@ networks:
 
 volumes:
   hermes-data: {}
+  zitadel-bootstrap: {}
