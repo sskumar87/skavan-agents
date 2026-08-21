@@ -32,4 +32,4 @@ V1 uses PostgreSQL with pgvector. Before every vector search, the backend verifi
 
 ## Deployment shape
 
-Laptop 1 is the private PostgreSQL + pgvector and backup node. Laptop 2 runs the web UI, FastAPI, ZITADEL, Hermes, and reverse proxy. Only reverse-proxy HTTPS is public; Hermes APIs remain private. Docker Compose is sufficient for V1.
+Laptop 1 is the private PostgreSQL + pgvector and backup node. Laptop 2 runs the web UI, FastAPI, ZITADEL, Hermes, reverse proxy and Cloudflare Tunnel connector. Cloudflare Tunnel is the public ingress and forwards only approved HTTPS application routes to the reverse proxy. Hermes APIs remain private. Docker Compose is sufficient for V1.
