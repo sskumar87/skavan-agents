@@ -18,6 +18,8 @@ Foundation only. The first vertical slice is signup and login through group/thre
 
 Read [the architecture overview](docs/architecture/overview.md) and [the implementation plan](docs/implementation-plan/README.md) before extending the platform.
 
+The normal-user UI direction and saved appearance-preference requirement are defined in [UI design](docs/architecture/ui-design.md).
+
 ## Local development
 
 Prerequisites and service configuration are intentionally introduced with the first runnable vertical slice. Do not expose Hermes credentials or call Hermes from the browser.

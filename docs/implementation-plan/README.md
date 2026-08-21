@@ -3,7 +3,7 @@
 Work in thin vertical slices, with tests added alongside each slice.
 
 1. **Foundation** — repository, architecture records, service boundaries and migration baseline.
-2. **Identity** — ZITADEL OIDC sign-up/login and backend session validation.
+2. **Identity** — ZITADEL OIDC sign-up/login, backend session validation, profile settings and persisted appearance preferences.
 3. **Groups** — memberships, roles and server-side authorization.
 4. **Threads** — group threads, messages and authoritative PostgreSQL history.
 5. **Hermes chat** — backend adapter, constrained context and streamed responses.
