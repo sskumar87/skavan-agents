@@ -24,8 +24,6 @@ users = table(
     "users",
     column("id", UUID(as_uuid=True)),
     column("display_name", String(200)),
-    column("given_name", String(200)),
-    column("family_name", String(200)),
     column("email", String(320)),
     column("preferences", JSONB),
     column("created_at", DateTime(timezone=True)),
@@ -118,9 +116,7 @@ async def synchronize_user(session: AsyncSession, identity: VerifiedIdentity) ->
     candidate_id = uuid4()
     await session.execute(
         insert(users).values(
-            id=candidate_id, display_name=identity.display_name,
-            given_name=identity.given_name, family_name=identity.family_name,
-            email=identity.email,
+            id=candidate_id, display_name=identity.display_name, email=identity.email,
             preferences={}, created_at=now, updated_at=now,
         )
     )
@@ -143,23 +139,20 @@ async def synchronize_user(session: AsyncSession, identity: VerifiedIdentity) ->
         await session.execute(delete(users).where(users.c.id == candidate_id))
     await session.execute(
         update(users).where(users.c.id == linked_user_id).values(
-            display_name=identity.display_name, given_name=identity.given_name,
-            family_name=identity.family_name, email=identity.email, updated_at=now,
+            display_name=identity.display_name, email=identity.email, updated_at=now,
         )
     )
     await session.commit()
     result = (
         await session.execute(
-            select(
-                users.c.id, users.c.display_name, users.c.given_name,
-                users.c.family_name, users.c.email, users.c.preferences,
-            )
+            select(users.c.id, users.c.display_name, users.c.email, users.c.preferences)
             .where(users.c.id == linked_user_id)
         )
     ).one()
     return {
         "id": str(result.id), "display_name": result.display_name,
-        "given_name": result.given_name, "family_name": result.family_name,
+        "given_name": identity.given_name or result.display_name.split(maxsplit=1)[0],
+        "family_name": identity.family_name,
         "email": result.email, "preferences": result.preferences,
     }
 
@@ -167,10 +160,7 @@ async def synchronize_user(session: AsyncSession, identity: VerifiedIdentity) ->
 async def get_platform_user(session: AsyncSession, user_id: PythonUUID) -> dict[str, Any] | None:
     result = (
         await session.execute(
-            select(
-                users.c.id, users.c.display_name, users.c.given_name,
-                users.c.family_name, users.c.email, users.c.preferences,
-            )
+            select(users.c.id, users.c.display_name, users.c.email, users.c.preferences)
             .where(users.c.id == user_id)
         )
     ).one_or_none()
@@ -178,7 +168,7 @@ async def get_platform_user(session: AsyncSession, user_id: PythonUUID) -> dict[
         return None
     return {
         "id": str(result.id), "display_name": result.display_name,
-        "given_name": result.given_name, "family_name": result.family_name,
+        "given_name": result.display_name.split(maxsplit=1)[0], "family_name": None,
         "email": result.email, "preferences": result.preferences,
     }
 
