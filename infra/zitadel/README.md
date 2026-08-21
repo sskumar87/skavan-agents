@@ -52,6 +52,16 @@ for an existing instance, update **Default Settings > Features > Login V2** in
 the Console (or use the Feature API) and set its base URI to the final public
 issuer plus `/ui/v2/login`.
 
+## Reusable E2E user
+
+Run `infra/zitadel/prepare-e2e-user.ps1` to generate the dedicated non-admin
+`codex-e2e` test credential outside the repository. By default it writes
+`C:\SKAV_PLATFORM\secrets\skavan-phase1\test-users\codex-e2e.json`, reuses an
+existing file, and never prints the password. Create the corresponding ZITADEL
+user with its e-mail marked verified and do not assign administrator roles.
+Use this identity only for repeatable product login, user synchronization, and
+chat persistence tests.
+
 The Laptop 2 Compose template follows ZITADEL v4.17.1's production-like
 lifecycle: `zitadel-init`, `zitadel-setup`, `zitadel-api`, `zitadel-login`, and
 an HTTP/2-capable Traefik proxy. ZITADEL's PostgreSQL database remains on
