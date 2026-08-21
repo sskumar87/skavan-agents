@@ -82,9 +82,19 @@ Set-EnvironmentValue $environmentFile "LOGIN_CLIENT_PAT_EXPIRATION" "2027-08-21T
 $escapedSqlPassword = $databasePassword.Replace("'", "''")
 $databaseSql = @"
 -- Run once from an administrative connection to the existing Laptop 1 server.
--- The script creates only the dedicated ZITADEL role and database.
-CREATE ROLE zitadel LOGIN PASSWORD '$escapedSqlPassword' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION;
-CREATE DATABASE zitadel OWNER zitadel;
+-- This safely creates the role or rotates its password when it already exists.
+DO `$zitadel_role`$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'zitadel') THEN
+        ALTER ROLE zitadel WITH LOGIN PASSWORD '$escapedSqlPassword' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION;
+    ELSE
+        CREATE ROLE zitadel LOGIN PASSWORD '$escapedSqlPassword' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION;
+    END IF;
+END
+`$zitadel_role`$;
+
+-- The phase-one database already exists; this keeps its ownership explicit.
+ALTER DATABASE zitadel OWNER TO zitadel;
 "@
 Set-Content -LiteralPath $databaseSqlFile -Value $databaseSql -Encoding utf8
 

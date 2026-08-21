@@ -17,8 +17,11 @@ Before starting the `identity` profile:
    database-role password and initial administrator password, generates all
    other keys, updates the protected external `.env`, and writes
    `zitadel-create.sql` beside it without displaying secrets.
-2. Run that generated SQL once through the existing IntelliJ administrative
-   connection to create the dedicated `zitadel` database and owner on Laptop 1.
+2. Run that generated SQL through the existing IntelliJ administrative
+   connection. It creates the dedicated role when missing or rotates its
+   password when it exists, then confirms ownership of the existing `zitadel`
+   database. On a completely clean PostgreSQL server, create the `zitadel`
+   database once before running the generated SQL.
 3. Keep the generated `.env`, master key, and SQL file outside the repository;
    back up the master key because it cannot be changed after initialization.
 4. Start `docker compose --env-file <protected-env> -f
