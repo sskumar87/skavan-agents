@@ -6,10 +6,10 @@
 - [x] FastAPI server-side Hermes adapter
 - [x] Responsive custom chat UI
 - [x] Laptop 2 Docker and pinned Hermes image definition
-- [ ] Configure protected DeepSeek credentials and select `deepseek-chat`
+- [x] Configure protected DeepSeek credentials and select `deepseek-chat`
 - [ ] Optionally configure Anthropic as the fallback provider
-- [ ] Start Hermes, API and web on Laptop 2
-- [ ] Send one real UI message through FastAPI to Hermes
+- [x] Start Hermes, API and web on Laptop 2
+- [x] Send one real UI message through FastAPI to Hermes
 - [ ] Replace the non-streaming response with SSE streaming
 
 ## Important, deferred until the chat slice works

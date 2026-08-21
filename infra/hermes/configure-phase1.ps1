@@ -18,6 +18,7 @@ $dockerDataDirectory = $DataDirectory.Replace('\', '/')
 
 $environmentLines = @(
     "HERMES_API_SERVER_KEY=$hermesServerKey"
+    "API_SERVER_KEY=$hermesServerKey"
     "DEEPSEEK_API_KEY=$deepSeekKey"
     "ANTHROPIC_API_KEY=$anthropicKey"
     "HERMES_DATA_DIR=$dockerDataDirectory"
@@ -25,6 +26,7 @@ $environmentLines = @(
 [System.IO.File]::WriteAllLines((Join-Path $DataDirectory ".env"), $environmentLines)
 
 $configurationLines = @(
+    "_config_version: 12"
     "model:"
     "  provider: deepseek"
     "  default: deepseek-chat"
