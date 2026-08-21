@@ -23,6 +23,7 @@ declare module "@auth/core/jwt" {
   interface JWT {
     externalSubject?: string;
     platformUserId?: string;
+    platformGivenName?: string;
     userPreferences?: Record<string, unknown>;
   }
 }

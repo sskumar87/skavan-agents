@@ -6,6 +6,9 @@ Alembic is the only mechanism that changes the product schema. Every merged or d
 
 `20260821_0001_product_baseline` establishes PostgreSQL tables for product users and OIDC identities, collaboration groups and memberships, threads and authoritative messages, group-scoped vector memory, channel identity mappings, Hermes profile bindings, capability permissions, business approvals, and audit events. It enables `pgvector` before creating the group-memory vector index.
 
+`20260821_0002_user_names` stores the OIDC `given_name` and `family_name`
+claims separately while retaining `display_name` for compatibility and fallback.
+
 The `group_memories.embedding` contract is `vector(1536)` in V1. A model change that requires another dimension is a deliberate schema migration and index rebuild, not a configuration-only change.
 
 ## Local usage

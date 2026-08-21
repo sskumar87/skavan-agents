@@ -13,6 +13,8 @@ class FakeVerifier:
             display_name="Test User",
             email="user@example.test",
             claims={"sub": "immutable-subject"},
+            given_name="Test",
+            family_name="User",
         )
 
 
@@ -25,6 +27,8 @@ async def fake_synchronize_user(session, identity):
     return {
         "id": "d34ab70c-4cec-4361-86b2-e3b8c97241ec",
         "display_name": identity.display_name,
+        "given_name": identity.given_name,
+        "family_name": identity.family_name,
         "email": identity.email,
         "preferences": {},
     }
@@ -51,5 +55,6 @@ def test_sync_returns_canonical_platform_user(monkeypatch) -> None:
         )
         assert response.status_code == 200
         assert response.json()["id"] == "d34ab70c-4cec-4361-86b2-e3b8c97241ec"
+        assert response.json()["given_name"] == "Test"
     finally:
         main.app.dependency_overrides.clear()

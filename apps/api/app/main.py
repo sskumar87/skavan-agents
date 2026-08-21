@@ -26,6 +26,8 @@ app = FastAPI(title="Skavan Agents API", version="0.1.0")
 class PlatformUser(BaseModel):
     id: str
     display_name: str
+    given_name: str | None = None
+    family_name: str | None = None
     email: str | None
     preferences: dict[str, object]
 

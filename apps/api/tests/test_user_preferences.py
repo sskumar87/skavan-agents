@@ -14,6 +14,8 @@ async def fake_get_platform_user(session, user_id):
     return {
         "id": str(user_id),
         "display_name": "Theme Tester",
+        "given_name": "Theme",
+        "family_name": "Tester",
         "email": "theme@example.test",
         "preferences": {"theme": "violet-pulse"},
     }

@@ -6,6 +6,7 @@ const clientId = process.env.ZITADEL_CLIENT_ID ?? "zitadel-client-not-configured
 
 type PlatformUser = {
   id: string;
+  given_name?: string | null;
   preferences: Record<string, unknown>;
 };
 
@@ -72,6 +73,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account?.id_token) {
         const platformUser = await synchronizePlatformUser(account.id_token);
         token.platformUserId = platformUser.id;
+        token.platformGivenName = platformUser.given_name ?? undefined;
         token.userPreferences = platformUser.preferences;
       }
       return token;
@@ -84,6 +86,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           id: String(token.externalSubject ?? token.sub ?? ""),
           platformUserId: String(token.platformUserId ?? ""),
           preferences: token.userPreferences ?? {},
+          name: typeof token.platformGivenName === "string"
+            ? token.platformGivenName
+            : session.user.name,
         },
       };
     },
