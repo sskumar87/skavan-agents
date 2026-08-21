@@ -9,7 +9,7 @@ This is the required release procedure for new machines. Follow it in order; do 
 | Laptop 1 | Docker-hosted PostgreSQL + pgvector, ZITADEL database, backups | Private network only |
 | Laptop 2 | Cloudflare Tunnel, reverse proxy, web, API, ZITADEL and Hermes | Tunnel is the only public ingress |
 
-The browser path is `Cloudflare → Tunnel → localhost-only reverse proxy → web/API`. The API alone calls Hermes. Hermes Dashboard is for trusted operators over private network/VPN; it is never a normal-user route. Redis and Kubernetes are not V1 requirements.
+The browser path is `Cloudflare → Tunnel → private Docker reverse proxy → web/API`. The API alone calls Hermes. Hermes Dashboard is for trusted operators over private network/VPN; it is never a normal-user route. Redis and Kubernetes are not V1 requirements.
 
 ## 2. Prerequisites and decisions
 
@@ -48,7 +48,7 @@ Assign an owner and rotation date to every secret. Only API receives the Hermes 
 
 1. Patch/harden the OS; enable time sync/encrypted storage; install Docker Engine + Compose from trusted sources.
 2. Obtain a tagged, reviewed release. Copy `infra/docker/compose.laptop2.example.yml` to ignored `compose.laptop2.yml` and `.env.example` to ignored `.env`.
-3. Supply verified deployment values only. Confirm the reverse proxy binds `127.0.0.1`, no database container exists, and API alone gets the Hermes key.
+3. Supply verified deployment values only. Confirm the reverse proxy has no host-published port, no database container exists, and API alone gets the Hermes key.
 4. Pin image versions/digests after compatibility checks and record them in the release record.
 
 ## 6. Identity and Hermes gates
@@ -60,7 +60,7 @@ For Hermes, verify the exact release's private API binding, persistent state, pr
 ## 7. Configure Cloudflare Tunnel
 
 1. Create a named, least-privilege Tunnel; store credentials outside the repo.
-2. Map only approved app/OIDC hostnames to `http://127.0.0.1:<reverse-proxy-port>` on Laptop 2.
+2. Map only approved app/OIDC hostnames to the private `reverse-proxy:8080` Docker service on Laptop 2.
 3. Never map Hermes, Dashboard, PostgreSQL, Docker or admin endpoints.
 4. Install the connector with a restart policy; configure Access/WAF/rate limits as needed.
 5. Verify externally that only intended routes are reachable and no laptop port is public.

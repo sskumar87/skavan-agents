@@ -8,9 +8,6 @@ services:
   reverse-proxy:
     image: nginx:1.27-alpine
     restart: unless-stopped
-    ports:
-      # Cloudflare Tunnel reaches this listener locally. Do not bind it publicly.
-      - "127.0.0.1:${REVERSE_PROXY_PORT:-8080}:8080"
     volumes:
       - ../reverse-proxy/nginx.conf.example:/etc/nginx/nginx.conf:ro
     networks:
@@ -18,8 +15,8 @@ services:
       - app
 
   cloudflared:
-    # Pin this to a reviewed cloudflared release before production deployment.
-    image: cloudflare/cloudflared:latest
+    # Set a reviewed, pinned image in the ignored deployment environment file.
+    image: ${CLOUDFLARED_IMAGE:?Set a pinned CLOUDFLARED_IMAGE locally}
     command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
     read_only: true
     volumes:

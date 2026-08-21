@@ -10,7 +10,7 @@ boundary. Laptop 1 remains the private Docker-hosted PostgreSQL + pgvector data 
 | Service | Responsibility | Exposure |
 | --- | --- | --- |
 | Cloudflare Tunnel | Outbound-only public ingress | Tunnel provider to local reverse proxy |
-| Reverse proxy | Single browser/API/OIDC entry point | Bound to `127.0.0.1` on Laptop 2 |
+| Reverse proxy | Single browser/API/OIDC entry point | Private Docker network only; no host port |
 | Web | Next.js user interface | Reverse proxy only |
 | API | Product authorization, data access, Hermes adapter | Reverse proxy and private services only |
 | ZITADEL | OIDC/OAuth identity provider | Explicit public OIDC routes via proxy only |

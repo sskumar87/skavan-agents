@@ -29,22 +29,27 @@ a populated `config.yml`.
 
 ## Run
 
-From `infra/docker`, create a local `.env` with the external secret location:
+From the repository root, create the ignored `.env` with the external secret
+location and a reviewed, pinned connector image:
 
 ```text
 CLOUDFLARED_CONFIG_DIR=C:/SKAV_PLATFORM/secrets/cloudflared
+CLOUDFLARED_IMAGE=cloudflare/cloudflared:<reviewed-version>
 ```
 
 Then start the ingress profile together with application services:
 
 ```text
-docker compose -f compose.ingress.yml up -d
+docker compose -f infra/docker/compose.laptop2.yml up -d
 ```
 
-Before a production deployment, replace the `cloudflare/cloudflared:latest`
-image reference with a reviewed, pinned release and record the change.
+Check the connection with
+`docker compose -f infra/docker/compose.laptop2.yml logs -f cloudflared`.
 
-Check the connection with `docker compose -f compose.ingress.yml logs -f cloudflared`.
+The proxy has no published host port: `cloudflared` reaches it through the
+private Docker `edge` network. Public OIDC routing is added only after the
+selected ZITADEL release and hostname are verified; do not route an unreviewed
+identity service through this configuration.
 
 ## Operational checks
 
