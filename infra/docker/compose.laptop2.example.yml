@@ -1,0 +1,104 @@
+name: skavan-platform
+
+# Laptop 2 service topology template.
+# Copy to compose.laptop2.yml and supply values through a local .env file.
+# This template is intentionally not a production-ready deployment manifest.
+
+services:
+  reverse-proxy:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      # Cloudflare Tunnel reaches this listener locally. Do not bind it publicly.
+      - "127.0.0.1:${REVERSE_PROXY_PORT:-8080}:8080"
+    volumes:
+      - ../reverse-proxy/nginx.conf.example:/etc/nginx/nginx.conf:ro
+    networks:
+      - edge
+      - app
+
+  cloudflared:
+    # Pin this to a reviewed cloudflared release before production deployment.
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+    read_only: true
+    volumes:
+      - ${CLOUDFLARED_CONFIG_DIR:?Set CLOUDFLARED_CONFIG_DIR to the protected local secret directory}:/etc/cloudflared:ro
+    depends_on:
+      - reverse-proxy
+    networks:
+      - edge
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ../../apps/web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # Browser-visible configuration must never contain Hermes credentials.
+      NEXT_PUBLIC_APP_ORIGIN: ${APP_ORIGIN}
+    networks:
+      - app
+
+  api:
+    build:
+      context: ../../apps/api
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    environment:
+      # Laptop 1 is a private data node. This URL is never published as a port.
+      DATABASE_URL: ${DATABASE_URL}
+      OIDC_ISSUER_URL: ${OIDC_ISSUER_URL}
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+      HERMES_API_BASE_URL: ${HERMES_API_BASE_URL}
+      HERMES_API_SERVER_KEY: ${HERMES_API_SERVER_KEY}
+    depends_on:
+      - web
+    networks:
+      - app
+      - private-services
+
+  # ZITADEL deployment shape, not a ready-to-run configuration. Its database is
+  # also hosted privately on Laptop 1. Pin the chosen supported image version
+  # and provide its documented configuration before enabling this service.
+  zitadel:
+    image: ${ZITADEL_IMAGE:?Set a pinned, supported ZITADEL_IMAGE locally}
+    profiles: ["identity"]
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    environment:
+      ZITADEL_EXTERNALDOMAIN: ${ZITADEL_EXTERNALDOMAIN}
+      ZITADEL_EXTERNALPORT: ${ZITADEL_EXTERNALPORT:-443}
+      ZITADEL_DATABASE_POSTGRES_HOST: ${ZITADEL_DATABASE_POSTGRES_HOST}
+      ZITADEL_DATABASE_POSTGRES_PORT: ${ZITADEL_DATABASE_POSTGRES_PORT:-5432}
+      ZITADEL_DATABASE_POSTGRES_DATABASE: ${ZITADEL_DATABASE_POSTGRES_DATABASE}
+      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: ${ZITADEL_DATABASE_POSTGRES_USER_USERNAME}
+      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: ${ZITADEL_DATABASE_POSTGRES_USER_PASSWORD}
+    networks:
+      - app
+      - private-services
+
+  # Hermes is deliberately represented as an internal-only boundary. Add its
+  # exact upstream image/command/config only after those runtime choices are
+  # verified. The API must be its sole product-facing caller.
+  hermes:
+    image: ${HERMES_IMAGE:?Set a verified, pinned Hermes image locally}
+    profiles: ["hermes"]
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    networks:
+      - private-services
+
+networks:
+  # Sole ingress path: Cloudflare Tunnel -> reverse proxy. Cloudflared is the
+  # only service on this network with outbound Internet access.
+  edge: {}
+  # Reverse proxy, web, API and ZITADEL's browser-facing OIDC endpoints.
+  app: {}
+  # API-to-Hermes, API-to-Laptop-1 PostgreSQL, and service administration only.
+  private-services:
+    internal: true

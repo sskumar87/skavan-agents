@@ -1,0 +1,9 @@
+# Copy to a protected local secret directory on Laptop 2; do not commit it.
+tunnel: <tunnel-uuid>
+credentials-file: /etc/cloudflared/<tunnel-uuid>.json
+
+# This tunnel reaches only the reverse proxy, never Hermes or the database.
+ingress:
+  - hostname: app.example.com
+    service: http://reverse-proxy:8080
+  - service: http_status:404

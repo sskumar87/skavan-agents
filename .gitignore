@@ -1,9 +1,13 @@
 # Environment and secrets
 .env
+infra/docker/compose.laptop2.yml
 .env.*
 !.env.example
 *.pem
 *.key
+.cloudflared/
+infra/cloudflare-tunnel/config.yml
+infra/cloudflare-tunnel/*.json
 
 # JavaScript
 node_modules/
