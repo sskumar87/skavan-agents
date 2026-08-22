@@ -1,5 +1,6 @@
 "use client";
 
+import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 
 export function OnboardingClient({ includeWork }: { includeWork: boolean }) {
@@ -18,7 +19,8 @@ export function OnboardingClient({ includeWork }: { includeWork: boolean }) {
         if (active) setError(body.detail ?? "Could not finish profile setup");
         return;
       }
-      window.location.assign("/refresh-access");
+      await signOut({ redirect: false });
+      window.location.assign("/login");
     }
     void finish();
     return () => { active = false; };
