@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
-from sqlalchemy import DateTime, Enum, Integer, String, Text, column, func, select, table
+from sqlalchemy import DateTime, Enum, Integer, String, Text, column, func, select, table, update
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -107,6 +107,28 @@ async def create_profile_thread(
     )
     await session.commit()
     return {"id": str(thread_id), "title": "New chat"}
+
+
+async def rename_profile_thread(
+    session: AsyncSession, profile: str, thread_id: UUID, title: str,
+) -> dict[str, str]:
+    group_id, _ = profile_context_ids(profile)
+    row = (
+        await session.execute(
+            update(threads)
+            .where(
+                threads.c.id == thread_id,
+                threads.c.group_id == group_id,
+                threads.c.archived_at.is_(None),
+            )
+            .values(title=title, updated_at=datetime.now(timezone.utc))
+            .returning(threads.c.id, threads.c.title)
+        )
+    ).one_or_none()
+    if row is None:
+        raise ValueError("Thread not found")
+    await session.commit()
+    return {"id": str(row.id), "title": row.title}
 
 
 async def require_profile_thread(session: AsyncSession, profile: str, thread_id: UUID) -> UUID:

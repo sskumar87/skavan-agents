@@ -55,8 +55,15 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .profileSwitcher button[aria-pressed="true"] { border-color: var(--color-accent-border); background: var(--color-accent-soft); color: var(--color-accent); }
 .newThreadButton { width: 100%; min-height: 42px; margin: 4px 0 12px; border: 1px solid var(--color-accent); border-radius: 7px; background: var(--color-accent); color: var(--color-on-accent); font-weight: 700; }
 .threadList { display: grid; gap: 7px; }
-.threadItem { min-height: 68px; padding: 10px; display: grid; grid-template-columns: 38px 1fr; align-items: center; gap: 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--color-text); text-align: left; }
-.threadItem.active { border-color: var(--color-accent); background: var(--color-accent-soft); }
+.threadItemWrap { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) 32px; align-items: center; border: 1px solid transparent; border-radius: 8px; }
+.threadItemWrap.active { border-color: var(--color-accent); background: var(--color-accent-soft); }
+.threadItem { width: 100%; min-width: 0; min-height: 68px; padding: 10px; display: grid; grid-template-columns: 38px 1fr; align-items: center; gap: 10px; border: 0; border-radius: 8px; background: transparent; color: var(--color-text); text-align: left; }
+.threadRenameButton { width: 28px; height: 28px; padding: 0; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--color-muted); }
+.threadRenameButton:hover,.threadRenameButton:focus-visible { border-color: var(--color-accent-border); color: var(--color-accent); }
+.threadRenameForm { min-height: 68px; padding: 10px; display: grid; grid-template-columns: minmax(0, 1fr) 30px 30px; align-items: center; gap: 6px; border: 1px solid var(--color-accent); border-radius: 8px; background: var(--color-accent-soft); }
+.threadRenameForm input { width: 100%; min-width: 0; height: 36px; padding: 0 9px; border: 1px solid var(--color-border); border-radius: 6px; outline: none; background: var(--color-input); color: var(--color-text); }
+.threadRenameForm input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 2px var(--color-accent-soft); }
+.threadRenameForm button { width: 30px; height: 30px; padding: 0; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-surface); color: var(--color-text); }
 .threadGlyph { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: var(--color-accent-soft); color: var(--color-accent); font-size: 22px; }
 .threadItem span:last-child { min-width: 0; display: grid; gap: 5px; }.threadItem strong { font-size: 12px; }.threadItem small { overflow: hidden; color: var(--color-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 

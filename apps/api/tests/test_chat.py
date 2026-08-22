@@ -58,6 +58,12 @@ async def fake_require_profile_thread(session, profile, thread_id):
     return thread_id
 
 
+async def fake_rename_profile_thread(session, profile, thread_id, title):
+    assert profile == "personal"
+    assert title == "Market research"
+    return {"id": str(thread_id), "title": title}
+
+
 async def fake_load_messages(session, thread_id, limit=100):
     return [{
         "id": "827cae77-34b9-41ae-92f9-c61ca6de8205",
@@ -80,6 +86,7 @@ def configure_conversation_fakes(monkeypatch) -> None:
     monkeypatch.setattr(main, "append_message", fake_append_message)
     monkeypatch.setattr(main, "load_messages", fake_load_messages)
     monkeypatch.setattr(main, "require_profile_thread", fake_require_profile_thread)
+    monkeypatch.setattr(main, "rename_profile_thread", fake_rename_profile_thread)
     monkeypatch.setattr(main, "get_user_profiles", fake_get_user_profiles)
 
 
@@ -104,6 +111,31 @@ class FakeHermesAdapter:
         assert profile == "personal"
         yield "Hello "
         yield "from Hermes"
+
+    async def list_sessions(self, *, profile: str):
+        assert profile == "personal"
+        return [{
+            "id": "terminal-session-1", "title": "Terminal investigation",
+            "preview": "Inspect the service", "message_count": 2,
+            "last_active": 123.5,
+        }]
+
+    async def session_messages(self, session_id: str, *, profile: str):
+        assert session_id == "terminal-session-1"
+        assert profile == "personal"
+        return [
+            {"id": 1, "role": "user", "content": "Inspect it", "timestamp": 1.0},
+            {"id": 2, "role": "assistant", "content": "It is healthy", "timestamp": 2.0},
+        ]
+
+    async def stream_session(
+        self, session_id: str, message: str, *, session_key: str, profile: str,
+    ) -> AsyncIterator[str]:
+        assert session_id == "terminal-session-1"
+        assert message == "Continue"
+        assert session_key == "skavan:profile:personal"
+        assert profile == "personal"
+        yield "Continued"
 
 
 class FailingHermesAdapter:
@@ -171,6 +203,63 @@ def test_chat_history_marks_the_authenticated_author(monkeypatch) -> None:
         "is_current_user": True,
         "author_name": "Skavan",
     }
+
+
+def test_profile_member_can_rename_shared_postgres_chat(monkeypatch) -> None:
+    configure_conversation_fakes(monkeypatch)
+    response = TestClient(app).patch(
+        "/api/chat/threads/f3a79589-1097-4bf4-8b09-893c39946f13",
+        json={"profile": "personal", "title": "  Market research  "},
+        headers={"X-Skavan-User-Id": USER_ID},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": "f3a79589-1097-4bf4-8b09-893c39946f13",
+        "title": "Market research",
+    }
+
+
+def test_profile_member_can_list_and_read_hermes_sessions(monkeypatch) -> None:
+    configure_conversation_fakes(monkeypatch)
+    app.dependency_overrides[get_hermes_adapter] = lambda: FakeHermesAdapter()
+    try:
+        sessions = TestClient(app).get(
+            "/api/hermes/sessions?profile=personal",
+            headers={"X-Skavan-User-Id": USER_ID},
+        )
+        messages = TestClient(app).get(
+            "/api/hermes/sessions/terminal-session-1/messages?profile=personal",
+            headers={"X-Skavan-User-Id": USER_ID},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert sessions.status_code == 200
+    assert sessions.json()[0]["title"] == "Terminal investigation"
+    assert sessions.json()[0]["source"] == "hermes"
+    assert messages.status_code == 200
+    assert [item["content"] for item in messages.json()] == ["Inspect it", "It is healthy"]
+    assert messages.json()[0]["author_name"] == "Terminal user"
+
+
+def test_profile_member_can_continue_hermes_session(monkeypatch) -> None:
+    configure_conversation_fakes(monkeypatch)
+    app.dependency_overrides[get_hermes_adapter] = lambda: FakeHermesAdapter()
+    try:
+        response = TestClient(app).post(
+            "/api/hermes/sessions/terminal-session-1/chat/stream",
+            json={"profile": "personal", "message": "Continue"},
+            headers={"X-Skavan-User-Id": USER_ID},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.text == (
+        'event: token\ndata: {"content":"Continued"}\n\n'
+        "event: done\ndata: {}\n\n"
+    )
 
 
 def test_chat_streams_normalized_sse_events(monkeypatch) -> None:

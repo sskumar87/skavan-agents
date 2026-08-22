@@ -14,7 +14,16 @@ type StoredChatMessage = Omit<ChatMessage, "isCurrentUser" | "authorName"> & {
   author_name?: string | null;
 };
 type StreamEvent = { event: string; data: Record<string, unknown> };
-type ChatThread = { id: string; title: string };
+type ThreadSource = "skavan" | "hermes";
+type ChatThread = {
+  id: string;
+  nativeId: string;
+  title: string;
+  source: ThreadSource;
+  preview?: string | null;
+};
+type StoredThread = { id: string; title: string };
+type HermesSession = { id: string; title: string; preview?: string | null };
 type ProfileKey = "personal" | "work";
 type ChatProfile = { key: ProfileKey; label: string };
 type ThemeName = "neon-grid" | "violet-pulse" | "amber-terminal" | "daylight-circuit";
@@ -61,6 +70,8 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
   const [theme, setTheme] = useState<ThemeName>("neon-grid");
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [isThreadDrawerOpen, setIsThreadDrawerOpen] = useState(false);
+  const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -178,14 +189,27 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     setThreads([]);
     setSelectedThreadId(null);
     setMessages(initialMessages);
-    fetch(`/bff/chat/threads?profile=${encodeURIComponent(selectedProfile)}`, { cache: "no-store" })
-      .then(async (response) => {
-        if (response.status === 401) {
+    Promise.all([
+      fetch(`/bff/chat/threads?profile=${encodeURIComponent(selectedProfile)}`, { cache: "no-store" }),
+      fetch(`/bff/hermes/sessions?profile=${encodeURIComponent(selectedProfile)}`, { cache: "no-store" }),
+    ])
+      .then(async ([threadResponse, sessionResponse]) => {
+        if (threadResponse.status === 401 || sessionResponse.status === 401) {
           window.location.assign("/login");
           return [];
         }
-        if (!response.ok) throw new Error("Unable to load threads");
-        return response.json() as Promise<ChatThread[]>;
+        if (!threadResponse.ok) throw new Error("Unable to load chats");
+        const stored = await threadResponse.json() as StoredThread[];
+        const native = sessionResponse.ok ? await sessionResponse.json() as HermesSession[] : [];
+        return [
+          ...stored.map((thread): ChatThread => ({
+            id: `skavan:${thread.id}`, nativeId: thread.id, title: thread.title, source: "skavan",
+          })),
+          ...native.map((session): ChatThread => ({
+            id: `hermes:${session.id}`, nativeId: session.id, title: session.title,
+            source: "hermes", preview: session.preview,
+          })),
+        ];
       })
       .then((items) => {
         setThreads(items);
@@ -200,8 +224,13 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
 
   useEffect(() => {
     if (!selectedThreadId || !selectedProfile) return;
+    const selectedThread = threads.find((thread) => thread.id === selectedThreadId);
+    if (!selectedThread) return;
     setIsLoadingHistory(true);
-    fetch(`/bff/chat/history?profile=${encodeURIComponent(selectedProfile)}&thread_id=${encodeURIComponent(selectedThreadId)}`, { cache: "no-store" })
+    const historyUrl = selectedThread.source === "hermes"
+      ? `/bff/hermes/sessions/${encodeURIComponent(selectedThread.nativeId)}/messages?profile=${encodeURIComponent(selectedProfile)}`
+      : `/bff/chat/history?profile=${encodeURIComponent(selectedProfile)}&thread_id=${encodeURIComponent(selectedThread.nativeId)}`;
+    fetch(historyUrl, { cache: "no-store" })
       .then(async (response) => {
         if (response.status === 401) {
           window.location.assign("/login");
@@ -220,7 +249,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
       .then((history) => setMessages(history.length ? history : initialMessages))
       .catch(() => setError("Chat history could not be loaded."))
       .finally(() => setIsLoadingHistory(false));
-  }, [selectedProfile, selectedThreadId]);
+  }, [selectedProfile, selectedThreadId, threads]);
 
   async function createThread() {
     setError(null);
@@ -232,7 +261,10 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
         body: JSON.stringify({ profile: selectedProfile }),
       });
       if (!response.ok) throw new Error("Unable to create a new chat");
-      const thread = await response.json() as ChatThread;
+      const stored = await response.json() as StoredThread;
+      const thread: ChatThread = {
+        id: `skavan:${stored.id}`, nativeId: stored.id, title: stored.title, source: "skavan",
+      };
       setThreads((current) => [thread, ...current]);
       setSelectedThreadId(thread.id);
       setMessages(initialMessages);
@@ -253,6 +285,33 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     setIsThreadDrawerOpen(false);
   }
 
+  function beginRename(thread: ChatThread) {
+    setEditingThreadId(thread.id);
+    setEditingTitle(thread.title);
+  }
+
+  async function renameThread(event: FormEvent<HTMLFormElement>, thread: ChatThread) {
+    event.preventDefault();
+    const title = editingTitle.trim();
+    if (!selectedProfile || thread.source !== "skavan" || !title) return;
+    setError(null);
+    try {
+      const response = await fetch(`/bff/chat/threads/${encodeURIComponent(thread.nativeId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile: selectedProfile, title }),
+      });
+      if (!response.ok) throw new Error("Unable to rename this chat");
+      const updated = await response.json() as StoredThread;
+      setThreads((current) => current.map((item) => item.id === thread.id
+        ? { ...item, title: updated.title }
+        : item));
+      setEditingThreadId(null);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to rename this chat.");
+    }
+  }
+
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const message = prompt.trim();
@@ -271,14 +330,22 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     setMessages(conversation);
 
     try {
-      const response = await fetch("/bff/chat/stream", {
+      const activeThread = threads.find((thread) => thread.id === selectedThreadId);
+      if (!activeThread || !selectedProfile) throw new Error("Choose a chat first");
+      const streamUrl = activeThread.source === "hermes"
+        ? `/bff/hermes/sessions/${encodeURIComponent(activeThread.nativeId)}/chat/stream`
+        : "/bff/chat/stream";
+      const requestBody = activeThread.source === "hermes"
+        ? { message, profile: selectedProfile }
+        : {
+            messages: [{ role: "user", content: message }],
+            thread_id: activeThread.nativeId,
+            profile: selectedProfile,
+          };
+      const response = await fetch(streamUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", content: message }],
-          thread_id: selectedThreadId,
-          profile: selectedProfile,
-        }),
+        body: JSON.stringify(requestBody),
       });
       if (response.status === 401) {
         window.location.assign("/login");
@@ -327,6 +394,40 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
       setIsSending(false);
       setIsReceiving(false);
     }
+  }
+
+  function renderThreadList() {
+    return (
+      <div className="threadList" aria-label="Chats and Hermes sessions">
+        {threads.map((thread) => editingThreadId === thread.id ? (
+          <form className="threadRenameForm" key={thread.id} onSubmit={(event) => renameThread(event, thread)}>
+            <label className="srOnly" htmlFor={`rename-${thread.id}`}>Rename chat</label>
+            <input
+              id={`rename-${thread.id}`}
+              value={editingTitle}
+              onChange={(event) => setEditingTitle(event.target.value)}
+              maxLength={300}
+              autoFocus
+            />
+            <button type="submit" aria-label="Save chat name">✓</button>
+            <button type="button" aria-label="Cancel rename" onClick={() => setEditingThreadId(null)}>×</button>
+          </form>
+        ) : (
+          <div className={`threadItemWrap ${thread.id === selectedThreadId ? "active" : ""}`} key={thread.id}>
+            <button className="threadItem" type="button" onClick={() => selectThread(thread.id)}>
+              <span className="threadGlyph">{thread.source === "hermes" ? "H" : "◇"}</span>
+              <span>
+                <strong>{thread.title}</strong>
+                <small>{thread.source === "hermes" ? "Hermes terminal session" : `Shared ${selectedProfile} chat`}</small>
+              </span>
+            </button>
+            {thread.source === "skavan" && (
+              <button className="threadRenameButton" type="button" aria-label={`Rename ${thread.title}`} onClick={() => beginRename(thread)}>✎</button>
+            )}
+          </div>
+        ))}
+      </div>
+    );
   }
 
   return (
@@ -398,14 +499,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           </div>
         )}
         <button className="newThreadButton" type="button" onClick={createThread}>＋ New chat</button>
-        <div className="threadList" aria-label="Threads">
-          {threads.map((thread) => (
-            <button className={`threadItem ${thread.id === selectedThreadId ? "active" : ""}`} type="button" key={thread.id} onClick={() => selectThread(thread.id)}>
-              <span className="threadGlyph">◇</span>
-              <span><strong>{thread.title}</strong><small>Shared {selectedProfile} chat</small></span>
-            </button>
-          ))}
-        </div>
+        {renderThreadList()}
       </aside>
 
       <section className="conversationPane" aria-label="Chat with Hermes">
@@ -509,14 +603,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
               </div>
             )}
             <button className="newThreadButton" type="button" onClick={createThread}>＋ New chat</button>
-            <div className="threadList" aria-label="Threads">
-              {threads.map((thread) => (
-                <button className={`threadItem ${thread.id === selectedThreadId ? "active" : ""}`} type="button" key={thread.id} onClick={() => selectThread(thread.id)}>
-                  <span className="threadGlyph">◇</span>
-                  <span><strong>{thread.title}</strong><small>Shared {selectedProfile} chat</small></span>
-                </button>
-              ))}
-            </div>
+            {renderThreadList()}
           </aside>
         </>
       )}

@@ -149,3 +149,102 @@ class HermesAdapter:
             raise
         except (httpx2.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
             raise HermesError("Hermes is currently unavailable.") from exc
+
+    async def list_sessions(self, *, profile: str) -> list[dict[str, Any]]:
+        try:
+            async with httpx2.AsyncClient(timeout=15.0) as client:
+                response = await client.get(
+                    self.endpoint("/api/sessions", profile),
+                    headers=self.request_headers(profile=profile),
+                    params={"limit": 200, "include_children": "true"},
+                )
+            response.raise_for_status()
+            data: Any = response.json().get("data", [])
+            if not isinstance(data, list):
+                raise TypeError("Hermes returned an invalid session list")
+            return [item for item in data if isinstance(item, dict)]
+        except httpx2.HTTPStatusError as exc:
+            raise HermesError("Hermes rejected the session request.") from exc
+        except (httpx2.HTTPError, AttributeError, TypeError, ValueError) as exc:
+            raise HermesError("Hermes sessions are currently unavailable.") from exc
+
+    async def session_messages(
+        self, session_id: str, *, profile: str,
+    ) -> list[dict[str, Any]]:
+        encoded_id = quote(session_id, safe="")
+        try:
+            async with httpx2.AsyncClient(timeout=15.0) as client:
+                response = await client.get(
+                    self.endpoint(f"/api/sessions/{encoded_id}/messages", profile),
+                    headers=self.request_headers(profile=profile),
+                    params={"limit": 500, "order": "oldest"},
+                )
+            response.raise_for_status()
+            data: Any = response.json().get("data", [])
+            if not isinstance(data, list):
+                raise TypeError("Hermes returned invalid session messages")
+            return [item for item in data if isinstance(item, dict)]
+        except httpx2.HTTPStatusError as exc:
+            if exc.response.status_code == 404:
+                raise HermesError("Hermes session was not found.") from exc
+            raise HermesError("Hermes rejected the session request.") from exc
+        except (httpx2.HTTPError, AttributeError, TypeError, ValueError) as exc:
+            raise HermesError("Hermes sessions are currently unavailable.") from exc
+
+    async def stream_session(
+        self,
+        session_id: str,
+        message: str,
+        *,
+        session_key: str,
+        profile: str,
+    ) -> AsyncIterator[str]:
+        encoded_id = quote(session_id, safe="")
+        received_content = False
+        event_name: str | None = None
+        try:
+            async with httpx2.AsyncClient(timeout=300.0) as client:
+                async with client.stream(
+                    "POST",
+                    self.endpoint(f"/api/sessions/{encoded_id}/chat/stream", profile),
+                    headers=self.request_headers(session_key, profile),
+                    json={"message": message},
+                ) as response:
+                    response.raise_for_status()
+                    async for line in response.aiter_lines():
+                        if line.startswith("event:"):
+                            event_name = line[6:].strip()
+                            continue
+                        if not line:
+                            event_name = None
+                            continue
+                        if not line.startswith("data:"):
+                            continue
+                        payload: Any = json.loads(line[5:].strip())
+                        if event_name == "error":
+                            detail = payload.get("message") if isinstance(payload, dict) else None
+                            raise HermesError(detail if isinstance(detail, str) else "Hermes session failed.")
+                        if event_name == "assistant.completed" and not received_content and isinstance(payload, dict):
+                            content = payload.get("content")
+                            if isinstance(content, str) and content:
+                                received_content = True
+                                yield content
+                            continue
+                        if event_name != "assistant.delta" or not isinstance(payload, dict):
+                            continue
+                        content = payload.get("delta")
+                        if isinstance(content, str) and content:
+                            received_content = True
+                            yield content
+            if not received_content:
+                raise HermesError("Hermes returned an empty response.")
+        except httpx2.TimeoutException as exc:
+            raise HermesError("Hermes timed out while processing the session.") from exc
+        except httpx2.HTTPStatusError as exc:
+            if exc.response.status_code == 404:
+                raise HermesError("Hermes session was not found.") from exc
+            raise HermesError("Hermes rejected the session request.") from exc
+        except HermesError:
+            raise
+        except (httpx2.HTTPError, json.JSONDecodeError, TypeError, ValueError) as exc:
+            raise HermesError("Hermes sessions are currently unavailable.") from exc

@@ -15,6 +15,7 @@ from app.conversations import (
     ensure_profile_context,
     list_profile_threads,
     load_messages,
+    rename_profile_thread,
     require_profile_thread,
 )
 from app.database import get_database_session, get_session_factory
@@ -107,9 +108,28 @@ class ChatThreadCreate(BaseModel):
     profile: Literal["personal", "work"]
 
 
+class ChatThreadUpdate(BaseModel):
+    profile: Literal["personal", "work"]
+    title: str = Field(min_length=1, max_length=300)
+
+
 class ChatProfile(BaseModel):
     key: Literal["personal", "work"]
     label: str
+
+
+class HermesSessionSummary(BaseModel):
+    id: str
+    title: str
+    preview: str | None = None
+    message_count: int = 0
+    last_active: float | None = None
+    source: Literal["hermes"] = "hermes"
+
+
+class HermesSessionChatRequest(BaseModel):
+    profile: Literal["personal", "work"]
+    message: str = Field(min_length=1, max_length=20_000)
 
 
 class RegistrationProfilesRequest(BaseModel):
@@ -227,6 +247,25 @@ async def new_chat_thread(
     return ChatThread.model_validate(stored)
 
 
+@app.patch("/api/chat/threads/{thread_id}", response_model=ChatThread, tags=["chat"])
+async def rename_chat_thread(
+    thread_id: UUID,
+    request: ChatThreadUpdate,
+    x_skavan_user_id: str | None = Header(default=None),
+) -> ChatThread:
+    user_id = require_platform_user_id(x_skavan_user_id)
+    title = request.title.strip()
+    if not title:
+        raise HTTPException(status_code=422, detail="Chat title cannot be empty")
+    async with get_session_factory()() as session:
+        await require_profile_access(session, user_id, request.profile)
+        try:
+            stored = await rename_profile_thread(session, request.profile, thread_id, title)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail="Thread not found") from exc
+    return ChatThread.model_validate(stored)
+
+
 @app.get("/api/chat/history", response_model=list[StoredChatMessage], tags=["chat"])
 async def chat_history(
     profile: Literal["personal", "work"] = "personal",
@@ -262,6 +301,107 @@ async def hermes_health(
     hermes: HermesAdapter = Depends(get_hermes_adapter),
 ) -> dict[str, str]:
     return {"status": "ok" if await hermes.health() else "unavailable"}
+
+
+@app.get(
+    "/api/hermes/sessions", response_model=list[HermesSessionSummary], tags=["hermes"],
+)
+async def hermes_sessions(
+    profile: Literal["personal", "work"],
+    x_skavan_user_id: str | None = Header(default=None),
+    hermes: HermesAdapter = Depends(get_hermes_adapter),
+) -> list[HermesSessionSummary]:
+    user_id = require_platform_user_id(x_skavan_user_id)
+    async with get_session_factory()() as session:
+        await require_profile_access(session, user_id, profile)
+    try:
+        stored = await hermes.list_sessions(profile=profile)
+    except HermesError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    result: list[HermesSessionSummary] = []
+    for item in stored:
+        session_id = item.get("id")
+        if not isinstance(session_id, str) or not session_id:
+            continue
+        raw_title = item.get("title")
+        raw_preview = item.get("preview")
+        result.append(HermesSessionSummary(
+            id=session_id,
+            title=raw_title.strip() if isinstance(raw_title, str) and raw_title.strip() else "Hermes session",
+            preview=raw_preview if isinstance(raw_preview, str) else None,
+            message_count=item.get("message_count") if isinstance(item.get("message_count"), int) else 0,
+            last_active=float(item["last_active"]) if isinstance(item.get("last_active"), (int, float)) else None,
+        ))
+    return result
+
+
+@app.get(
+    "/api/hermes/sessions/{session_id}/messages",
+    response_model=list[StoredChatMessage],
+    tags=["hermes"],
+)
+async def hermes_session_messages(
+    session_id: str,
+    profile: Literal["personal", "work"],
+    x_skavan_user_id: str | None = Header(default=None),
+    hermes: HermesAdapter = Depends(get_hermes_adapter),
+) -> list[StoredChatMessage]:
+    user_id = require_platform_user_id(x_skavan_user_id)
+    async with get_session_factory()() as session:
+        await require_profile_access(session, user_id, profile)
+    try:
+        stored = await hermes.session_messages(session_id, profile=profile)
+    except HermesError as exc:
+        status = 404 if "not found" in str(exc).lower() else 503
+        raise HTTPException(status_code=status, detail=str(exc)) from exc
+    result: list[StoredChatMessage] = []
+    for index, item in enumerate(stored):
+        role = item.get("role")
+        content = item.get("content")
+        if role not in {"user", "assistant"} or not isinstance(content, str) or not content.strip():
+            continue
+        raw_id = item.get("id")
+        timestamp = item.get("timestamp")
+        result.append(StoredChatMessage(
+            id=str(raw_id) if raw_id is not None else f"{session_id}:{index}",
+            role=role,
+            content=content,
+            created_at=str(timestamp) if timestamp is not None else "",
+            is_current_user=False,
+            author_name="Hermes" if role == "assistant" else "Terminal user",
+        ))
+    return result
+
+
+@app.post("/api/hermes/sessions/{session_id}/chat/stream", tags=["hermes"])
+async def stream_hermes_session_chat(
+    session_id: str,
+    request: HermesSessionChatRequest,
+    x_skavan_user_id: str | None = Header(default=None),
+    hermes: HermesAdapter = Depends(get_hermes_adapter),
+) -> StreamingResponse:
+    user_id = require_platform_user_id(x_skavan_user_id)
+    async with get_session_factory()() as session:
+        await require_profile_access(session, user_id, request.profile)
+
+    async def events() -> AsyncIterator[str]:
+        try:
+            async for content in hermes.stream_session(
+                session_id,
+                request.message,
+                session_key=f"skavan:profile:{request.profile}",
+                profile=request.profile,
+            ):
+                yield format_sse("token", {"content": content})
+            yield format_sse("done", {})
+        except HermesError as exc:
+            yield format_sse("error", {"message": str(exc)})
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/api/chat", response_model=ChatResponse, tags=["chat"])
