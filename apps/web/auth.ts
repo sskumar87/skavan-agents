@@ -4,6 +4,7 @@ import Zitadel from "next-auth/providers/zitadel";
 const issuer = process.env.ZITADEL_ISSUER_URL ?? "https://zitadel.invalid";
 const clientId = process.env.ZITADEL_CLIENT_ID ?? "zitadel-client-not-configured";
 const profileRoleClaim = "urn:zitadel:iam:org:project:roles";
+const sessionMaxAge = Number(process.env.AUTH_SESSION_MAX_AGE ?? 365 * 24 * 60 * 60);
 
 function profileRolesFromClaims(profile: Record<string, unknown> | undefined) {
   const claim = profile?.[profileRoleClaim];
@@ -64,7 +65,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET,
   session: {
     strategy: "jwt",
-    maxAge: Number(process.env.AUTH_SESSION_MAX_AGE ?? 3600),
+    maxAge: sessionMaxAge,
+    updateAge: 0,
   },
   pages: {
     signIn: "/login",

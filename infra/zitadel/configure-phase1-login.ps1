@@ -80,7 +80,7 @@ $databaseDsn = "postgresql://zitadel:$encodedDatabasePassword@$DatabaseHost`:$Da
 Set-Content -LiteralPath $masterKeyFile -Value $masterKey -NoNewline -Encoding ascii
 Set-EnvironmentValue $environmentFile "AUTH_SECRET" $authSecret
 Set-EnvironmentValue $environmentFile "AUTH_TRUST_HOST" "true"
-Set-EnvironmentValue $environmentFile "AUTH_SESSION_MAX_AGE" "3600"
+Set-EnvironmentValue $environmentFile "AUTH_SESSION_MAX_AGE" "31536000"
 Set-EnvironmentValue $environmentFile "APP_ORIGIN" $AppOrigin.TrimEnd('/')
 Set-EnvironmentValue $environmentFile "ZITADEL_DOMAIN" $issuerUri.Host
 Set-EnvironmentValue $environmentFile "ZITADEL_EXTERNAL_PORT" "$externalPort"
