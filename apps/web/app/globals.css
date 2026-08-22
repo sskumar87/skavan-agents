@@ -9,7 +9,7 @@
 :root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
-body { overflow: hidden; background: var(--color-bg); color: var(--color-text); }
+body { overflow-x: hidden; overflow-y: auto; background: var(--color-bg); color: var(--color-text); }
 button, textarea { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .45; }
@@ -114,7 +114,7 @@ textarea::placeholder { color: var(--color-muted); }
 @media (max-width: 1260px) { .workspaceShell { grid-template-columns: 210px 260px minmax(420px, 1fr); }.workspaceTopbar { grid-column: 2 / 4; }.contextRail { display: none; }.conversationPane { border-right: 0; } }
 @media (max-width: 900px) { .workspaceShell { grid-template-columns: 190px minmax(0, 1fr); }.workspaceTopbar { grid-column: 2; }.threadRail { display: none; }.workspaceSearch { max-width: 360px; } }
 @media (max-width: 680px) {
-  html, body { height: 100%; overflow: hidden; }
+  html, body { min-height: 100%; overflow-x: hidden; overflow-y: auto; }
   .workspaceShell { height: 100dvh; min-height: 0; overflow: hidden; grid-template-columns: 1fr; grid-template-rows: 58px minmax(0, 1fr) calc(62px + env(safe-area-inset-bottom)); }
   .primaryRail { display: none; }.workspaceTopbar { grid-column: 1; padding: 8px 10px; grid-template-columns: 36px 1fr auto; gap: 8px; }
   .backButton,.themeMenuButton { width: 34px; min-width: 34px; height: 34px; }.workspaceSearch { min-width: 0; border: 0; background: transparent; }.workspaceSearch span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.workspaceSearch kbd { display: none; }.desktopAccount .accountName { display: none; }.desktopAccount .logoutButton { min-height: 34px; padding: 0 8px; }

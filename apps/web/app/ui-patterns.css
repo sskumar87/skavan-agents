@@ -72,7 +72,7 @@
 }
 
 @media (max-width: 460px) {
-  .authPage { padding: 0; }
+  .authPage { min-height: 100dvh; padding: 0; place-items: start stretch; }
   .authWindow { min-height: 100dvh; border: 0; border-radius: 0; }
   .authTopbar { align-items: flex-start; flex-direction: column; padding: 16px; }
   .authHero { min-height: 190px; padding: 28px 18px 22px; }
