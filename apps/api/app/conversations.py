@@ -81,16 +81,22 @@ async def ensure_profile_context(session: AsyncSession, user_id: UUID, profile: 
     return thread_id
 
 
-async def list_profile_threads(session: AsyncSession, profile: str) -> list[dict[str, str]]:
+async def list_profile_threads(session: AsyncSession, profile: str) -> list[dict[str, Any]]:
     group_id, _ = profile_context_ids(profile)
     rows = (
         await session.execute(
-            select(threads.c.id, threads.c.title)
+            select(
+                threads.c.id,
+                threads.c.title,
+                func.coalesce(func.max(messages.c.created_at), threads.c.created_at).label("last_active"),
+            )
+            .select_from(threads.outerjoin(messages, messages.c.thread_id == threads.c.id))
             .where(threads.c.group_id == group_id, threads.c.archived_at.is_(None))
-            .order_by(threads.c.created_at.desc())
+            .group_by(threads.c.id, threads.c.title, threads.c.created_at)
+            .order_by(func.coalesce(func.max(messages.c.created_at), threads.c.created_at).desc())
         )
     ).all()
-    return [{"id": str(row.id), "title": row.title} for row in rows]
+    return [{"id": str(row.id), "title": row.title, "last_active": row.last_active} for row in rows]
 
 
 async def create_profile_thread(
@@ -106,7 +112,7 @@ async def create_profile_thread(
         )
     )
     await session.commit()
-    return {"id": str(thread_id), "title": "New chat"}
+    return {"id": str(thread_id), "title": "New chat", "last_active": now}
 
 
 async def rename_profile_thread(

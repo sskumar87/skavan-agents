@@ -1,5 +1,6 @@
 import json
 from collections.abc import AsyncIterator
+from datetime import datetime
 from functools import lru_cache
 from typing import Literal
 from uuid import UUID
@@ -102,6 +103,7 @@ class StoredChatMessage(ChatMessage):
 class ChatThread(BaseModel):
     id: str
     title: str
+    last_active: datetime | None = None
 
 
 class ChatThreadCreate(BaseModel):
@@ -221,7 +223,7 @@ async def chat_profiles(
     return [ChatProfile(key=key, label=key.title()) for key in profiles]
 
 
-@app.get("/api/chat/threads", response_model=list[ChatThread], tags=["chat"])
+@app.get("/api/chat/threads", response_model=list[ChatThread], response_model_exclude_none=True, tags=["chat"])
 async def chat_threads(
     profile: Literal["personal", "work"] = "personal",
     x_skavan_user_id: str | None = Header(default=None),
@@ -234,7 +236,7 @@ async def chat_threads(
     return [ChatThread.model_validate(item) for item in stored]
 
 
-@app.post("/api/chat/threads", response_model=ChatThread, tags=["chat"])
+@app.post("/api/chat/threads", response_model=ChatThread, response_model_exclude_none=True, tags=["chat"])
 async def new_chat_thread(
     request: ChatThreadCreate,
     x_skavan_user_id: str | None = Header(default=None),
@@ -247,7 +249,7 @@ async def new_chat_thread(
     return ChatThread.model_validate(stored)
 
 
-@app.patch("/api/chat/threads/{thread_id}", response_model=ChatThread, tags=["chat"])
+@app.patch("/api/chat/threads/{thread_id}", response_model=ChatThread, response_model_exclude_none=True, tags=["chat"])
 async def rename_chat_thread(
     thread_id: UUID,
     request: ChatThreadUpdate,

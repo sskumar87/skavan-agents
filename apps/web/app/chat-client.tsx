@@ -21,9 +21,10 @@ type ChatThread = {
   title: string;
   source: ThreadSource;
   preview?: string | null;
+  activityAt: number;
 };
-type StoredThread = { id: string; title: string };
-type HermesSession = { id: string; title: string; preview?: string | null };
+type StoredThread = { id: string; title: string; last_active?: string | null };
+type HermesSession = { id: string; title: string; preview?: string | null; last_active?: number | null };
 type ProfileKey = "personal" | "work";
 type ChatProfile = { key: ProfileKey; label: string };
 type ThemeName = "neon-grid" | "violet-pulse" | "amber-terminal" | "daylight-circuit";
@@ -40,6 +41,16 @@ const initialMessages: ChatMessage[] = [{
   role: "assistant",
   content: "Hermes link ready. What are we building?",
 }];
+
+function activityTimestamp(value: string | number | null | undefined): number {
+  if (typeof value === "string") return Number.isNaN(Date.parse(value)) ? 0 : Date.parse(value);
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0;
+  return value < 1_000_000_000_000 ? value * 1000 : value;
+}
+
+function newestFirst(items: ChatThread[]): ChatThread[] {
+  return [...items].sort((left, right) => right.activityAt - left.activityAt);
+}
 
 function parseStreamEvent(block: string): StreamEvent | null {
   let event = "message";
@@ -229,15 +240,16 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
         if (!threadResponse.ok) throw new Error("Unable to load chats");
         const stored = await threadResponse.json() as StoredThread[];
         const native = sessionResponse.ok ? await sessionResponse.json() as HermesSession[] : [];
-        return [
+        return newestFirst([
           ...stored.map((thread): ChatThread => ({
             id: `skavan:${thread.id}`, nativeId: thread.id, title: thread.title, source: "skavan",
+            activityAt: activityTimestamp(thread.last_active),
           })),
           ...native.map((session): ChatThread => ({
             id: `hermes:${session.id}`, nativeId: session.id, title: session.title,
-            source: "hermes", preview: session.preview,
+            source: "hermes", preview: session.preview, activityAt: activityTimestamp(session.last_active),
           })),
-        ];
+        ]);
       })
       .then((items) => {
         setThreads(items);
@@ -292,6 +304,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
       const stored = await response.json() as StoredThread;
       const thread: ChatThread = {
         id: `skavan:${stored.id}`, nativeId: stored.id, title: stored.title, source: "skavan",
+        activityAt: activityTimestamp(stored.last_active) || Date.now(),
       };
       setThreads((current) => [thread, ...current]);
       setSelectedThreadId(thread.id);
@@ -360,6 +373,9 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     try {
       const activeThread = threads.find((thread) => thread.id === selectedThreadId);
       if (!activeThread || !selectedProfile) throw new Error("Choose a chat first");
+      setThreads((current) => newestFirst(current.map((thread) => thread.id === activeThread.id
+        ? { ...thread, activityAt: Date.now() }
+        : thread)));
       const streamUrl = activeThread.source === "hermes"
         ? `/bff/hermes/sessions/${encodeURIComponent(activeThread.nativeId)}/chat/stream`
         : "/bff/chat/stream";
