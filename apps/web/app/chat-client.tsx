@@ -242,6 +242,12 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     }
   }
 
+  function selectProfile(profile: ProfileKey) {
+    setError(null);
+    setSelectedThreadId(null);
+    setSelectedProfile(profile);
+  }
+
   function selectThread(threadId: string) {
     setSelectedThreadId(threadId);
     setIsThreadDrawerOpen(false);
@@ -387,7 +393,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
         {profiles.length > 1 && (
           <div className="profileSwitcher" role="group" aria-label="Active profile">
             {profiles.map((profile) => (
-              <button key={profile.key} type="button" aria-pressed={selectedProfile === profile.key} onClick={() => setSelectedProfile(profile.key)}>{profile.label}</button>
+              <button key={profile.key} type="button" aria-pressed={selectedProfile === profile.key} onClick={() => selectProfile(profile.key)}>{profile.label}</button>
             ))}
           </div>
         )}
@@ -438,6 +444,9 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
         </div>
         <div className="composerArea">
           {error && <p className="error" role="alert">{error}</p>}
+          {!selectedProfile && error?.startsWith("No Personal or Work role") && (
+            <a className="refreshAccess" href="/refresh-access">Refresh profile access</a>
+          )}
           <form className="composer" onSubmit={sendMessage}>
             <span className="composerIcon" aria-hidden="true">⌁</span>
             <label className="srOnly" htmlFor="prompt">Message Hermes</label>
@@ -453,9 +462,9 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
               }}
               placeholder={`Message ${threads.find((thread) => thread.id === selectedThreadId)?.title ?? "General"}...`}
               rows={1}
-              disabled={isSending || isLoadingHistory}
+              disabled={!selectedProfile || isSending || isLoadingHistory}
             />
-            <button type="submit" disabled={!prompt.trim() || isSending || isLoadingHistory}>
+            <button type="submit" disabled={!selectedProfile || !prompt.trim() || isSending || isLoadingHistory}>
               {isLoadingHistory ? "Loading" : isSending ? "Sending" : "Send"}
             </button>
           </form>
@@ -495,7 +504,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
             {profiles.length > 1 && (
               <div className="profileSwitcher" role="group" aria-label="Active profile">
                 {profiles.map((profile) => (
-                  <button key={profile.key} type="button" aria-pressed={selectedProfile === profile.key} onClick={() => setSelectedProfile(profile.key)}>{profile.label}</button>
+                  <button key={profile.key} type="button" aria-pressed={selectedProfile === profile.key} onClick={() => selectProfile(profile.key)}>{profile.label}</button>
                 ))}
               </div>
             )}

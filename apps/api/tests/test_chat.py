@@ -15,13 +15,19 @@ USER_ID = "d34ab70c-4cec-4361-86b2-e3b8c97241ec"
 def test_hermes_session_key_is_sent_as_a_request_header() -> None:
     adapter = HermesAdapter(
         base_url="http://hermes:8642", api_key="a" * 32,
-        personal_api_key="p" * 32, work_api_key="w" * 32,
+        work_api_key="w" * 32,
     )
 
     assert adapter.request_headers("skavan:profile:personal", "personal") == {
-        "Authorization": f"Bearer {'p' * 32}",
+        "Authorization": f"Bearer {'a' * 32}",
         "X-Hermes-Session-Key": "skavan:profile:personal",
     }
+    assert adapter.endpoint("/v1/chat/completions", "personal") == (
+        "http://hermes:8642/v1/chat/completions"
+    )
+    assert adapter.endpoint("/v1/chat/completions", "work") == (
+        "http://hermes:8642/p/work/v1/chat/completions"
+    )
 
 
 class FakeSessionContext:

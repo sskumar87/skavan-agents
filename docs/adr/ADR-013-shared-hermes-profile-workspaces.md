@@ -20,7 +20,7 @@ has two shared contexts and no user-level chat isolation.
 
 V1 exposes exactly two shared workspaces:
 
-- `personal`, backed by the Hermes `personal` profile;
+- `personal`, backed by Hermes' built-in `default` profile;
 - `work`, backed by the Hermes `work` profile.
 
 ZITADEL project roles define which workspaces appear in the user's JWT:
@@ -45,7 +45,7 @@ refreshed JWT.
 FastAPI owns the allowlist and maps workspace keys to Hermes gateway routes:
 
 ```text
-personal -> /p/personal/v1/chat/completions
+personal -> /v1/chat/completions (Hermes default profile)
 work     -> /p/work/v1/chat/completions
 ```
 

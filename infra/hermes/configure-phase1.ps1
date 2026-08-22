@@ -23,7 +23,6 @@ function New-RandomHexKey {
     return ([BitConverter]::ToString($bytes) -replace "-", "").ToLowerInvariant()
 }
 $hermesServerKey = New-RandomHexKey
-$personalServerKey = New-RandomHexKey
 $workServerKey = New-RandomHexKey
 $dashboardSecret = New-RandomHexKey
 
@@ -34,7 +33,6 @@ $dockerDataDirectory = $hermesDataDirectory.Replace('\', '/')
 
 $environmentLines = @(
     "HERMES_API_SERVER_KEY=$hermesServerKey"
-    "HERMES_PERSONAL_API_SERVER_KEY=$personalServerKey"
     "HERMES_WORK_API_SERVER_KEY=$workServerKey"
     "DEEPSEEK_API_KEY=$deepSeekKey"
     "ANTHROPIC_API_KEY=$anthropicKey"
@@ -52,6 +50,9 @@ if (-not [string]::IsNullOrWhiteSpace($anthropicKey)) {
 }
 [System.IO.File]::WriteAllLines((Join-Path $hermesDataDirectory ".env"), @(
     "API_SERVER_KEY=$hermesServerKey"
+    "API_SERVER_ENABLED=true"
+    "API_SERVER_HOST=0.0.0.0"
+    "API_SERVER_PORT=8642"
 ) + $providerLines)
 
 $configurationLines = @(
@@ -72,29 +73,24 @@ $configurationLines += @(
     "gateway:"
     "  multiplex_profiles: true"
     "  multiplex_profile_allowlist:"
-    "    - personal"
     "    - work"
 )
 [System.IO.File]::WriteAllLines((Join-Path $hermesDataDirectory "config.yaml"), $configurationLines)
-foreach ($profile in @("personal", "work")) {
-    $profileDirectory = Join-Path $hermesDataDirectory "profiles\$profile"
-    New-Item -ItemType Directory -Path $profileDirectory -Force | Out-Null
-    [System.IO.File]::WriteAllLines(
-        (Join-Path $profileDirectory "config.yaml"),
-        $profileConfigurationLines
-    )
-    $profileKey = if ($profile -eq "personal") { $personalServerKey } else { $workServerKey }
-    [System.IO.File]::WriteAllLines((Join-Path $profileDirectory ".env"), @(
-        "API_SERVER_KEY=$profileKey"
-    ) + $providerLines)
-}
+$workProfileDirectory = Join-Path $hermesDataDirectory "profiles\work"
+New-Item -ItemType Directory -Path $workProfileDirectory -Force | Out-Null
+[System.IO.File]::WriteAllLines(
+    (Join-Path $workProfileDirectory "config.yaml"),
+    $profileConfigurationLines
+)
+[System.IO.File]::WriteAllLines((Join-Path $workProfileDirectory ".env"), @(
+    "API_SERVER_KEY=$workServerKey"
+) + $providerLines)
 
 $deepSeekKey = $null
 $anthropicKey = $null
 $dashboardUsername = $null
 $dashboardPassword = $null
 $hermesServerKey = $null
-$personalServerKey = $null
 $workServerKey = $null
 $dashboardSecret = $null
 

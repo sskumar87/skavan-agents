@@ -19,7 +19,6 @@ class HermesAdapter:
     base_url: str
     api_key: str
     model: str = "hermes-agent"
-    personal_api_key: str = ""
     work_api_key: str = ""
 
     @classmethod
@@ -28,7 +27,6 @@ class HermesAdapter:
             base_url=os.getenv("HERMES_API_BASE_URL", "http://hermes:8642").rstrip("/"),
             api_key=os.getenv("HERMES_API_SERVER_KEY", ""),
             model=os.getenv("HERMES_MODEL", "hermes-agent"),
-            personal_api_key=os.getenv("HERMES_PERSONAL_API_SERVER_KEY", ""),
             work_api_key=os.getenv("HERMES_WORK_API_SERVER_KEY", ""),
         )
 
@@ -42,7 +40,8 @@ class HermesAdapter:
         self, session_key: str | None = None, profile: str | None = None,
     ) -> dict[str, str]:
         api_key = {
-            "personal": self.personal_api_key,
+            # Personal is the product name for Hermes' default profile.
+            "personal": self.api_key,
             "work": self.work_api_key,
         }.get(profile, self.api_key)
         if len(api_key) < 16:
@@ -53,7 +52,9 @@ class HermesAdapter:
         return headers
 
     def endpoint(self, path: str, profile: str | None = None) -> str:
-        prefix = f"/p/{quote(profile, safe='')}" if profile else ""
+        # Hermes exposes the default profile without a /p/<name> prefix.
+        runtime_profile = None if profile == "personal" else profile
+        prefix = f"/p/{quote(runtime_profile, safe='')}" if runtime_profile else ""
         return f"{self.base_url}{prefix}{path}"
 
     async def health(self) -> bool:
