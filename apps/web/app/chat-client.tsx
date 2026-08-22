@@ -72,9 +72,12 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
   const [isThreadDrawerOpen, setIsThreadDrawerOpen] = useState(false);
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const drawerSearchInputRef = useRef<HTMLInputElement>(null);
   const followBottomRef = useRef(true);
 
   useEffect(() => {
@@ -83,6 +86,31 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
       .then((payload: { status?: string }) => setHermesStatus(payload.status === "ok" ? "online" : "offline"))
       .catch(() => setHermesStatus("offline"));
   }, []);
+
+  useEffect(() => {
+    function focusSearch(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      if (event.key === "Escape" && [searchInputRef.current, drawerSearchInputRef.current].includes(document.activeElement as HTMLInputElement)) {
+        setSearchQuery("");
+        searchInputRef.current?.blur();
+        drawerSearchInputRef.current?.blur();
+      }
+    }
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, []);
+
+  useEffect(() => {
+    if (!isThreadDrawerOpen || document.activeElement !== searchInputRef.current) return;
+    requestAnimationFrame(() => drawerSearchInputRef.current?.focus());
+  }, [isThreadDrawerOpen]);
+
+  function openMobileSearch() {
+    if (window.matchMedia("(max-width: 900px)").matches) setIsThreadDrawerOpen(true);
+  }
 
   function updateScrollControls() {
     const element = messagesRef.current;
@@ -397,9 +425,15 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
   }
 
   function renderThreadList() {
+    const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
+    const visibleThreads = normalizedQuery
+      ? threads.filter((thread) => [thread.title, thread.preview, thread.source]
+        .some((value) => value?.toLocaleLowerCase().includes(normalizedQuery)))
+      : threads;
+
     return (
       <div className="threadList" aria-label="Chats and Hermes sessions">
-        {threads.map((thread) => editingThreadId === thread.id ? (
+        {visibleThreads.map((thread) => editingThreadId === thread.id ? (
           <form className="threadRenameForm" key={thread.id} onSubmit={(event) => renameThread(event, thread)}>
             <label className="srOnly" htmlFor={`rename-${thread.id}`}>Rename chat</label>
             <input
@@ -426,6 +460,12 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
             )}
           </div>
         ))}
+        {visibleThreads.length === 0 && (
+          <div className="threadSearchEmpty" role="status">
+            <strong>No chats found</strong>
+            <span>Try a different title or keyword.</span>
+          </div>
+        )}
       </div>
     );
   }
@@ -451,8 +491,20 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           aria-expanded={isThreadDrawerOpen}
           onClick={() => setIsThreadDrawerOpen(true)}
         >‹</button>
-        <div className="workspaceSearch" aria-label="Search chats">
-          <NavIcon kind="search" /><span>Search chats...</span><kbd>⌘ K</kbd>
+        <div className="workspaceSearch">
+          <NavIcon kind="search" />
+          <label className="srOnly" htmlFor="chat-search">Search chats</label>
+          <input
+            id="chat-search"
+            ref={searchInputRef}
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            onFocus={openMobileSearch}
+            placeholder="Search chats..."
+            autoComplete="off"
+          />
+          {!searchQuery && <kbd>⌘ K</kbd>}
         </div>
         <div className="workspaceActions">
           <button
@@ -602,6 +654,19 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
                 ))}
               </div>
             )}
+            <div className="workspaceSearch drawerSearch">
+              <NavIcon kind="search" />
+              <label className="srOnly" htmlFor="drawer-chat-search">Search chats</label>
+              <input
+                id="drawer-chat-search"
+                ref={drawerSearchInputRef}
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search chats..."
+                autoComplete="off"
+              />
+            </div>
             <button className="newThreadButton" type="button" onClick={createThread}>＋ New chat</button>
             {renderThreadList()}
           </aside>
