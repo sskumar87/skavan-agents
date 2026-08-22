@@ -83,6 +83,8 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
   const [isThreadDrawerOpen, setIsThreadDrawerOpen] = useState(false);
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [deletingThread, setDeletingThread] = useState<ChatThread | null>(null);
+  const [isDeletingThread, setIsDeletingThread] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
@@ -353,6 +355,30 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     }
   }
 
+  async function deleteThread() {
+    if (!selectedProfile || !deletingThread || deletingThread.source !== "skavan") return;
+    setError(null);
+    setIsDeletingThread(true);
+    try {
+      const response = await fetch(
+        `/bff/chat/threads/${encodeURIComponent(deletingThread.nativeId)}?profile=${encodeURIComponent(selectedProfile)}`,
+        { method: "DELETE" },
+      );
+      if (!response.ok) throw new Error("Unable to delete this chat");
+      const remaining = threads.filter((thread) => thread.id !== deletingThread.id);
+      setThreads(remaining);
+      if (selectedThreadId === deletingThread.id) {
+        setSelectedThreadId(remaining[0]?.id ?? null);
+        if (!remaining.length) setMessages(initialMessages);
+      }
+      setDeletingThread(null);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to delete this chat.");
+    } finally {
+      setIsDeletingThread(false);
+    }
+  }
+
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const message = prompt.trim();
@@ -472,7 +498,10 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
               </span>
             </button>
             {thread.source === "skavan" && (
-              <button className="threadRenameButton" type="button" aria-label={`Rename ${thread.title}`} onClick={() => beginRename(thread)}>✎</button>
+              <span className="threadActions">
+                <button className="threadRenameButton" type="button" aria-label={`Rename ${thread.title}`} onClick={() => beginRename(thread)}>✎</button>
+                <button className="threadDeleteButton" type="button" aria-label={`Delete ${thread.title}`} onClick={() => setDeletingThread(thread)}>×</button>
+              </span>
             )}
           </div>
         ))}
@@ -687,6 +716,20 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
             {renderThreadList()}
           </aside>
         </>
+      )}
+
+      {deletingThread && (
+        <div className="confirmDialogBackdrop" role="presentation">
+          <section className="confirmDialog uiPanel" role="alertdialog" aria-modal="true" aria-labelledby="delete-chat-title" aria-describedby="delete-chat-description">
+            <span className="confirmDialogIcon" aria-hidden="true">×</span>
+            <h2 id="delete-chat-title">Delete this chat?</h2>
+            <p id="delete-chat-description"><strong>{deletingThread.title}</strong> will be removed from the shared profile chat list. Its stored messages will be retained for recovery.</p>
+            <div className="confirmDialogActions">
+              <button type="button" onClick={() => setDeletingThread(null)} disabled={isDeletingThread}>Cancel</button>
+              <button className="danger" type="button" onClick={deleteThread} disabled={isDeletingThread}>{isDeletingThread ? "Deleting…" : "Delete chat"}</button>
+            </div>
+          </section>
+        </div>
       )}
 
       <nav className="mobileNavigation" aria-label="Mobile navigation">

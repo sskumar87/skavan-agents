@@ -137,6 +137,26 @@ async def rename_profile_thread(
     return {"id": str(row.id), "title": row.title}
 
 
+async def archive_profile_thread(session: AsyncSession, profile: str, thread_id: UUID) -> None:
+    group_id, _ = profile_context_ids(profile)
+    now = datetime.now(timezone.utc)
+    archived_id = (
+        await session.execute(
+            update(threads)
+            .where(
+                threads.c.id == thread_id,
+                threads.c.group_id == group_id,
+                threads.c.archived_at.is_(None),
+            )
+            .values(archived_at=now, updated_at=now)
+            .returning(threads.c.id)
+        )
+    ).scalar_one_or_none()
+    if archived_id is None:
+        raise ValueError("Thread not found")
+    await session.commit()
+
+
 async def require_profile_thread(session: AsyncSession, profile: str, thread_id: UUID) -> UUID:
     group_id, _ = profile_context_ids(profile)
     found = (

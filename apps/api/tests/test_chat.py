@@ -64,6 +64,11 @@ async def fake_rename_profile_thread(session, profile, thread_id, title):
     return {"id": str(thread_id), "title": title}
 
 
+async def fake_archive_profile_thread(session, profile, thread_id):
+    assert profile == "personal"
+    assert thread_id == UUID("f3a79589-1097-4bf4-8b09-893c39946f13")
+
+
 async def fake_load_messages(session, thread_id, limit=100):
     return [{
         "id": "827cae77-34b9-41ae-92f9-c61ca6de8205",
@@ -87,6 +92,7 @@ def configure_conversation_fakes(monkeypatch) -> None:
     monkeypatch.setattr(main, "load_messages", fake_load_messages)
     monkeypatch.setattr(main, "require_profile_thread", fake_require_profile_thread)
     monkeypatch.setattr(main, "rename_profile_thread", fake_rename_profile_thread)
+    monkeypatch.setattr(main, "archive_profile_thread", fake_archive_profile_thread)
     monkeypatch.setattr(main, "get_user_profiles", fake_get_user_profiles)
 
 
@@ -218,6 +224,17 @@ def test_profile_member_can_rename_shared_postgres_chat(monkeypatch) -> None:
         "id": "f3a79589-1097-4bf4-8b09-893c39946f13",
         "title": "Market research",
     }
+
+
+def test_profile_member_can_archive_shared_postgres_chat(monkeypatch) -> None:
+    configure_conversation_fakes(monkeypatch)
+    response = TestClient(app).delete(
+        "/api/chat/threads/f3a79589-1097-4bf4-8b09-893c39946f13?profile=personal",
+        headers={"X-Skavan-User-Id": USER_ID},
+    )
+
+    assert response.status_code == 204
+    assert response.content == b""
 
 
 def test_profile_member_can_list_and_read_hermes_sessions(monkeypatch) -> None:

@@ -6,11 +6,12 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, Header, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.conversations import (
+    archive_profile_thread,
     append_message,
     create_profile_thread,
     ensure_profile_context,
@@ -266,6 +267,22 @@ async def rename_chat_thread(
         except ValueError as exc:
             raise HTTPException(status_code=404, detail="Thread not found") from exc
     return ChatThread.model_validate(stored)
+
+
+@app.delete("/api/chat/threads/{thread_id}", status_code=204, tags=["chat"])
+async def delete_chat_thread(
+    thread_id: UUID,
+    profile: Literal["personal", "work"],
+    x_skavan_user_id: str | None = Header(default=None),
+) -> Response:
+    user_id = require_platform_user_id(x_skavan_user_id)
+    async with get_session_factory()() as session:
+        await require_profile_access(session, user_id, profile)
+        try:
+            await archive_profile_thread(session, profile, thread_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail="Thread not found") from exc
+    return Response(status_code=204)
 
 
 @app.get("/api/chat/history", response_model=list[StoredChatMessage], tags=["chat"])
