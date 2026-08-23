@@ -68,6 +68,20 @@ function parseStreamEvent(block: string): StreamEvent | null {
     : null;
 }
 
+function mapStoredMessages(history: StoredChatMessage[]): ChatMessage[] {
+  return history.map((message) => ({
+    id: message.id,
+    role: message.role,
+    content: message.content,
+    isCurrentUser: message.is_current_user,
+    authorName: message.author_name,
+  }));
+}
+
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
 export function ChatClient({ account, userName }: { account: ReactNode; userName: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [threads, setThreads] = useState<ChatThread[]>([]);
@@ -315,14 +329,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           return [];
         }
         if (!response.ok) throw new Error("Unable to load chat history");
-        const history = await response.json() as StoredChatMessage[];
-        return history.map((message) => ({
-          id: message.id,
-          role: message.role,
-          content: message.content,
-          isCurrentUser: message.is_current_user,
-          authorName: message.author_name,
-        }));
+        return mapStoredMessages(await response.json() as StoredChatMessage[]);
       })
       .then((history) => setMessages(history.length ? history : initialMessages))
       .catch(() => setError("Chat history could not be loaded."))
@@ -450,10 +457,12 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     const conversation = [...messages, userMessage];
     setMessages(conversation);
 
+    let activeThread: ChatThread | undefined;
     try {
-      const activeThread = threads.find((thread) => thread.id === selectedThreadId);
+      activeThread = threads.find((thread) => thread.id === selectedThreadId);
       if (!activeThread || !selectedProfile) throw new Error("Choose a chat first");
-      setThreads((current) => newestFirst(current.map((thread) => thread.id === activeThread.id
+      const activeThreadId = activeThread.id;
+      setThreads((current) => newestFirst(current.map((thread) => thread.id === activeThreadId
         ? { ...thread, activityAt: Date.now() }
         : thread)));
       const streamUrl = activeThread.source === "hermes"
@@ -516,9 +525,49 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     } catch (cause) {
       const detail = cause instanceof Error ? cause.message : "";
       const interrupted = cause instanceof TypeError || detail === "Load failed" || detail === "Failed to fetch";
-      setError(interrupted
-        ? "Connection interrupted. Hermes may still be working; reopen this chat to refresh its saved response."
-        : detail || "Unable to reach Hermes.");
+      if (interrupted && activeThread?.source === "hermes" && selectedProfile) {
+        setError("Connection interrupted. Recovering the saved Hermes response…");
+        let recovered = false;
+        for (let attempt = 0; attempt < 12; attempt += 1) {
+          await wait(attempt === 0 ? 750 : 2500);
+          try {
+            const response = await fetch(
+              `/bff/hermes/sessions/${encodeURIComponent(activeThread.nativeId)}/messages?profile=${encodeURIComponent(selectedProfile)}`,
+              { cache: "no-store" },
+            );
+            if (response.status === 401) {
+              window.location.assign("/login");
+              return;
+            }
+            if (!response.ok) continue;
+            const history = mapStoredMessages(await response.json() as StoredChatMessage[]);
+            let sentMessageIndex = -1;
+            for (let index = history.length - 1; index >= 0; index -= 1) {
+              if (history[index].role === "user" && history[index].content.trim() === message) {
+                sentMessageIndex = index;
+                break;
+              }
+            }
+            const hasSavedResponse = sentMessageIndex >= 0
+              && history.slice(sentMessageIndex + 1).some((item) => item.role === "assistant" && item.content.trim());
+            if (!hasSavedResponse) continue;
+            history[sentMessageIndex] = {
+              ...history[sentMessageIndex], isCurrentUser: true, authorName: userName,
+            };
+            setMessages(history);
+            setError(null);
+            recovered = true;
+            break;
+          } catch {
+            // The public connection may still be settling; retry the saved session.
+          }
+        }
+        if (!recovered) {
+          setError("Connection interrupted. Hermes may still be working; reopen this chat to refresh its saved response.");
+        }
+      } else {
+        setError(detail || "Unable to reach Hermes.");
+      }
     } finally {
       setIsSending(false);
       setIsReceiving(false);

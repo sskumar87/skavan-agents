@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi.testclient import TestClient
 
 from app.hermes import HermesAdapter, HermesError
+import app.hermes as hermes_module
 import app.main as main
 from app.main import app, get_hermes_adapter, stream_with_heartbeat
 
@@ -29,6 +30,47 @@ def test_hermes_session_key_is_sent_as_a_request_header() -> None:
     assert adapter.endpoint("/v1/chat/completions", "work") == (
         "http://hermes:8642/p/work/v1/chat/completions"
     )
+
+
+def test_hermes_session_messages_loads_every_page(monkeypatch) -> None:
+    requested_offsets: list[int] = []
+
+    class FakeResponse:
+        def __init__(self, data):
+            self._data = data
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"data": self._data}
+
+    class FakeAsyncClient:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return False
+
+        async def get(self, _url, *, headers, params):
+            assert headers["Authorization"] == f"Bearer {'a' * 32}"
+            offset = params["offset"]
+            requested_offsets.append(offset)
+            if offset == 0:
+                return FakeResponse([{"id": index} for index in range(500)])
+            return FakeResponse([{"id": 500}, {"id": 501}])
+
+    monkeypatch.setattr(hermes_module.httpx2, "AsyncClient", FakeAsyncClient)
+    adapter = HermesAdapter(base_url="http://hermes:8642", api_key="a" * 32)
+
+    messages = asyncio.run(adapter.session_messages("session-1", profile="personal"))
+
+    assert requested_offsets == [0, 500]
+    assert len(messages) == 502
+    assert messages[-1]["id"] == 501
 
 
 class FakeSessionContext:

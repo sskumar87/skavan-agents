@@ -174,16 +174,26 @@ class HermesAdapter:
         encoded_id = quote(session_id, safe="")
         try:
             async with httpx2.AsyncClient(timeout=15.0) as client:
-                response = await client.get(
-                    self.endpoint(f"/api/sessions/{encoded_id}/messages", profile),
-                    headers=self.request_headers(profile=profile),
-                    params={"limit": 500, "order": "oldest"},
-                )
-            response.raise_for_status()
-            data: Any = response.json().get("data", [])
-            if not isinstance(data, list):
-                raise TypeError("Hermes returned invalid session messages")
-            return [item for item in data if isinstance(item, dict)]
+                messages: list[dict[str, Any]] = []
+                offset = 0
+                page_size = 500
+                while True:
+                    response = await client.get(
+                        self.endpoint(f"/api/sessions/{encoded_id}/messages", profile),
+                        headers=self.request_headers(profile=profile),
+                        params={"limit": page_size, "offset": offset, "order": "oldest"},
+                    )
+                    response.raise_for_status()
+                    data: Any = response.json().get("data", [])
+                    if not isinstance(data, list):
+                        raise TypeError("Hermes returned invalid session messages")
+                    page = [item for item in data if isinstance(item, dict)]
+                    messages.extend(page)
+                    if len(data) < page_size:
+                        return messages
+                    offset += len(data)
+                    if offset >= 10_000:
+                        raise TypeError("Hermes session history exceeds the supported limit")
         except httpx2.HTTPStatusError as exc:
             if exc.response.status_code == 404:
                 raise HermesError("Hermes session was not found.") from exc
