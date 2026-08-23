@@ -666,12 +666,6 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
               id="prompt"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  event.currentTarget.form?.requestSubmit();
-                }
-              }}
               placeholder={`Message ${threads.find((thread) => thread.id === selectedThreadId)?.title ?? "General"}...`}
               rows={1}
               disabled={!selectedProfile || isSending || isLoadingHistory}
