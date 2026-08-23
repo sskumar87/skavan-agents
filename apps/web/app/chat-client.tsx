@@ -209,12 +209,25 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           setTheme(saved);
         }
         const preferred = preferences?.preferred_profile;
-        const initial = result.items.some((item) => item.key === preferred)
+        const preferredIsAuthorized = result.items.some((item) => item.key === preferred);
+        const initial = preferredIsAuthorized
           ? preferred ?? null
           : result.items[0]?.key ?? null;
         setProfiles(result.items);
         setPreferredProfile(initial);
         setSelectedProfile(initial);
+        if (preferred && !preferredIsAuthorized && initial) {
+          setError(`Your ${preferred === "work" ? "Work" : "Personal"} profile access is no longer available. Switched to ${initial === "work" ? "Work" : "Personal"}.`);
+          void fetch("/bff/users/me/preferences/profile", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ profile: initial }),
+          }).then((response) => {
+            if (!response.ok) throw new Error("Unable to replace revoked default profile");
+          }).catch(() => {
+            setError("Your previous default profile was revoked. The replacement default could not be saved.");
+          });
+        }
         if (!result.items.length) {
           setError("No Personal or Work role is present in your login token.");
           setIsLoadingHistory(false);
