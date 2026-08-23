@@ -532,6 +532,8 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     );
   }
 
+  const activeThreadSource = threads.find((thread) => thread.id === selectedThreadId)?.source;
+
   return (
     <main className="workspaceShell">
       <aside className="primaryRail">
@@ -628,9 +630,11 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           {messages.map((message) => {
             const isAssistant = message.role === "assistant";
             const isOwn = !isAssistant && (message.isCurrentUser ?? true);
+            const isTerminalUser = !isAssistant && activeThreadSource === "hermes";
+            const isRightAligned = isOwn || isTerminalUser;
             const authorName = isAssistant ? "Hermes · Agent" : (message.authorName || (isOwn ? userName : "Group member"));
             return (
-              <article className={`message ${isAssistant ? "assistant" : isOwn ? "user" : "participant"}`} key={message.id}>
+              <article className={`message ${isAssistant ? "assistant" : isRightAligned ? "user" : "participant"}`} key={message.id}>
                 <span className="messageAvatar">{isAssistant ? "H" : authorName.slice(0, 1).toUpperCase()}</span>
                 <div className="messageBody">
                   <div className="messageMeta">{authorName}</div>
