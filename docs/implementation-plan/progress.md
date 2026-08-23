@@ -1,47 +1,89 @@
 # Delivery progress
 
-This is the current execution ledger. It is updated when a component has been verified, not merely drafted.
+Last updated: 2026-08-23
 
-## Completed
+This is the project execution ledger. A component is marked complete only after
+it has been implemented and verified. Material architecture changes require an
+ADR before implementation.
+
+## Current Phase 1 objective
+
+Provide a stable, responsive multi-user web client for the Personal and Work
+Hermes profiles, with authentication, saved user preferences and conversations
+that can be continued from both Skavan and Hermes Web.
+
+## Completed and deployed
 
 | Component | Evidence |
 | --- | --- |
-| Product database | Separate `skavan` database created on Laptop 1; existing `skav` database remains untouched. |
-| Database roles | `skavan_app` is a restricted runtime login; `skavan_migrator` owns the product database and is used only for schema migration. |
-| ZITADEL database | Dedicated `zitadel` database and non-superuser owner created on Laptop 1; its DSN is stored only in a protected remote env file and its initial checksum-protected backup was verified. |
-| pgvector baseline | `vector` 0.8.1 enabled; `vector(1536)` group-memory column and cosine HNSW index validated. |
-| Alembic baseline | Revision `20260821_0001` applied forward-only to `skavan` after a disposable-database validation run. |
-| Backup and restore rehearsal | A custom-format backup of the empty baseline database was restored into an isolated disposable database; revision `20260821_0001` was verified, then the disposable databases were removed. |
-| Local backup automation | Docker Desktop user timers are installed for `skavan` and `zitadel`; both scoped-role jobs completed with valid checksums and the script rejects the existing `skav` database. |
-| Reproducible app builds | Latest stable web/API dependencies are locked; production Dockerfiles, health checks and Hermes outbound-only egress are defined. API tests and the Next.js standalone build pass. |
-| Clean-machine CI | GitHub Actions run 32447450529 passed API tests, web audit/type-check/build, full Compose-profile validation and both production container builds. |
-| PostgreSQL network binding | Docker port 5432 is bound to Laptop 1 private address only, preserving Laptop 2 access. |
-| Infrastructure source | Laptop 2 Compose, private ingress and Cloudflare Tunnel templates are committed; public Hermes/PostgreSQL routes are absent. |
-| ZITADEL application registration | `Skavan Platform` project and `Skavan Web` Authorization Code + PKCE client created with exact `https://skavan.skavapp.com` callback/logout URIs. |
-| Public authentication | ZITADEL login and federated logout are working through the two Cloudflare Tunnel hostnames. |
-| V1 UI contract | Authenticated workspace prototype approved; four semantic CSS themes and responsive/accessibility development rules are locked in `docs/architecture/ui-design-system.md`. |
+| Product database | Separate `skavan` database exists on Laptop 1; the existing `skav` trading database remains untouched. |
+| Database foundation | Restricted runtime/migration roles, pgvector 0.8.1 and Alembic revision `20260821_0001` are operational. |
+| Public authentication | ZITADEL signup, login and federated logout work through `auth.skavapp.com`; immutable OIDC subjects identify product users. |
+| Profile authorization | Personal maps to the Hermes default profile and Work maps to the named `work` profile. Users can hold one or both ZITADEL profile roles. |
+| Shared profile conversations | Profile members can list shared PostgreSQL chats and Hermes-native sessions; there is deliberately no user-level transcript isolation inside a profile. |
+| Hermes-native continuation in Skavan | Hermes sessions can be listed, read and continued from the Skavan UI through the profile-scoped Sessions API. |
+| User identity presentation | Registered names are synchronized into PostgreSQL and the given name is displayed in the authenticated UI. |
+| Theme preference | Four approved themes are available and the selected theme is persisted in the user's PostgreSQL JSONB preferences. |
+| Default profile preference | Users with two profiles can save the profile that opens by default on mobile, tablet and desktop. Single-profile users enter their only authorized profile automatically. |
+| Revoked default handling | If an administrator revokes the saved default profile, Skavan selects and persists an authorized fallback; chat is disabled if no profile remains. |
+| Responsive chat experience | Sticky composer/navigation, scroll controls, dynamic multiline input, content-sized bubbles, right-aligned user messages, Markdown/GFM rendering and responsive long-title headers are deployed. |
+| Chat input behavior | Enter creates a newline, Send submits explicitly, and Ctrl+Enter submits on desktop. |
+| Streaming resilience | The UI shows active streaming state; API SSE heartbeats prevent idle Cloudflare/mobile disconnects during long Hermes tool operations. |
+| Chat management | Search, latest-activity ordering, PostgreSQL chat rename/archive controls and Hermes session discovery are available. |
+| Long session history | Existing Hermes messages larger than 20,000 characters can be loaded without API validation failure. |
+| Session cookies | Auth sessions use a 365-day sliding lifetime. |
+| Deployment | Laptop 2 runs the web, API, Hermes, ZITADEL and reverse proxy services with Docker Compose; web, API and Hermes are healthy after the latest deployment. |
+| UI design system | The approved nerdy visual system, semantic theme tokens, icons and responsive rules are recorded in `docs/architecture/ui-design-system.md`. |
 
-## In progress
+## P0 — next implementation work
 
-| Component | Next action |
+| Task | Definition of done |
 | --- | --- |
-| Laptop 1 network hardening | Confirm approved Redis/Redis Insight consumers before changing their all-interface bindings. |
-| Backups and recovery | Enable user lingering for unattended timers, then choose encrypted off-host destination, recovery-key custody, disk/backup-failure alerting, retention and recovery objectives before production use. |
-| ZITADEL profile roles | Create `profile.personal` and `profile.work`, enable project role assertion, provision a least-privilege role-assignment service identity, and assign existing users before deployment. |
-| Shared Hermes profiles | Migration helper is prepared to isolate Hermes data and create Personal/Work multiplex profiles with distinct API keys. Run it, restart Hermes, and verify both routes plus wrong-key rejection. |
-| Shared profile conversations | Role-scoped profile selector, shared threads, message attribution, registration choices and ZITADEL provisioning path are implemented. Configure identity/profile infrastructure, rebuild, and complete multi-user acceptance tests. |
-| Legacy chat cleanup | Preview and cleanup SQL are prepared. Run only after shared profile threads are deployed and verified; do not expose or auto-migrate old private histories. |
+| Record unified-session architecture | Add an ADR that supersedes the split-authority part of ADR-014. Define one Skavan chat → one Hermes profile/session ID, PostgreSQL metadata/mirroring responsibilities and failure recovery. |
+| Create Hermes sessions for Skavan chats | A new Skavan chat creates or binds an actual Hermes session in the selected profile and stores that immutable session ID against the product thread. |
+| Route all new chat turns through Sessions API | Skavan uses `/api/sessions/{id}/chat/stream` (or `/p/work/...`) instead of stateless `/v1/chat/completions`; the same chat is visible in Skavan and Hermes Web after refresh. |
+| Existing-chat policy | Decide and implement either a reviewed one-time migration of PostgreSQL-only chats or a clearly labelled legacy/read-only path. No silent or duplicate migration. |
+| Cross-client refresh | Skavan detects messages written through Hermes Web/terminal and refreshes the active conversation without requiring profile switching. Define polling or a supported session-event mechanism. |
+| Per-session writer protection | Serialize turns for the same Hermes session, provide busy/queued UX, handle Hermes 429 responses and prevent simultaneous Skavan/Hermes writers from duplicating work. |
+| Tool and interruption events | Preserve and render safe Hermes tool-progress, completion and interruption events instead of exposing only text tokens. |
+| Profile acceptance suite | Verify Personal-only, Work-only, both profiles, saved default, revoked default, all roles revoked, two-user shared chat visibility and wrong-profile denial. These tests are release-blocking. |
 
-## Not started
+## P1 — release and operational follow-up
 
-| Component | Dependency |
+| Task | Next action |
 | --- | --- |
-| Profile backup/restore rehearsal | Personal and Work profile data directories must be backed up and restored independently. |
-| Shared memory acceptance test | Confirm `USER.md`/`MEMORY.md` are shared within each profile and isolated between Personal and Work. |
+| Push current branch | Local verified commits are pending on `feature/minimal-hermes-chat`. Push them and run the clean-machine CI workflow. |
+| ZITADEL proxy health | Diagnose why `zitadel-proxy` reports unhealthy while ZITADEL API/login and public authentication remain functional; correct the health check or underlying routing issue. |
+| Profile backup/restore | Back up and independently restore the default Personal and named Work Hermes data directories, including their `state.db`, `USER.md` and `MEMORY.md`. |
+| Shared-memory acceptance | Prove Personal and Work memory isolation and same-profile sharing using explicit test facts. |
+| Off-host recovery | Select encrypted off-host backup storage, key custody, retention, alerts and recovery objectives; perform a documented restore rehearsal. |
+| Deployment documentation | Update the clean-machine runbook with the pinned Docker executable discovery, current Compose command, profile bootstrap and post-deployment acceptance checks. |
 
-## Decisions still required
+## P2 — later product capabilities
 
-1. Encrypted off-host backup destination, key custody, schedule and recovery objectives.
-2. Whether Redis/Redis Insight require any LAN access beyond Laptop 1.
+| Task | Guardrail |
+| --- | --- |
+| Safe `/commands` support | Define an allowlist and permission model. Do not expose unrestricted terminal, filesystem, configuration or administrator commands to normal users. |
+| Optional OmniRoute provider | Evaluate provider compatibility, model routing, cost, failover and secret handling before adding it to Hermes profiles. |
+| Mechanical action ledger | If required, add a reviewed hook for tool/action records. Observer hooks are best-effort and do not replace authorization or the per-session writer guard. |
+| Messaging channels | Add Telegram and then WhatsApp only after the web/session identity model is stable; link channel identities to canonical product users. |
+| Mobile and voice | React Native and voice remain deferred and must reuse the same backend/profile/session authorization model. |
 
-Until these decisions are made, no API/UI feature is treated as deployable. The infrastructure work continues without exposing secrets or enabling public management routes.
+## Decisions required
+
+1. Whether Hermes `state.db` becomes the canonical transcript for unified chats
+   or PostgreSQL remains authoritative with a rigorously defined mirror.
+2. Whether existing PostgreSQL-only chats are migrated or retained as legacy
+   conversations.
+3. The per-session lock location and queue behavior shared by Skavan and direct
+   Hermes clients.
+4. The safe user-facing Hermes command allowlist.
+5. Encrypted off-host backup destination, recovery-key custody and RPO/RTO.
+
+## Known non-goals for Phase 1
+
+- No user-level chat isolation within a Personal or Work profile.
+- No Redis or Kubernetes dependency.
+- No public Hermes API or Hermes API key in the browser.
+- No voice, native mobile app, Telegram or WhatsApp until the web session model
+  is stable.
