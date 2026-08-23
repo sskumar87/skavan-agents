@@ -303,6 +303,29 @@ async def set_user_theme(
     return await get_platform_user(session, user_id)
 
 
+async def set_user_profile_preference(
+    session: AsyncSession, user_id: PythonUUID, profile: str,
+) -> dict[str, Any] | None:
+    current = (
+        await session.execute(
+            select(users.c.preferences).where(users.c.id == user_id).with_for_update()
+        )
+    ).scalar_one_or_none()
+    if current is None:
+        return None
+    assigned = current.get("profile_roles")
+    if not isinstance(assigned, list) or profile not in assigned:
+        raise ValueError("Profile access denied")
+    preferences = {**current, "preferred_profile": profile}
+    await session.execute(
+        update(users).where(users.c.id == user_id).values(
+            preferences=preferences, updated_at=datetime.now(timezone.utc),
+        )
+    )
+    await session.commit()
+    return await get_platform_user(session, user_id)
+
+
 async def get_user_profiles(session: AsyncSession, user_id: PythonUUID) -> list[str]:
     preferences = (
         await session.execute(select(users.c.preferences).where(users.c.id == user_id))

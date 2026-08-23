@@ -57,6 +57,7 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .profileSwitcher { margin: 4px 0 12px; padding: 3px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-input); }
 .profileSwitcher button { min-height: 34px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--color-muted); font-size: 11px; font-weight: 650; }
 .profileSwitcher button[aria-pressed="true"] { border-color: var(--color-accent-border); background: var(--color-accent-soft); color: var(--color-accent); }
+.profilePreferenceStatus { margin: -5px 0 12px; color: var(--color-success); font-size: 10px; }
 .newThreadButton { width: 100%; min-height: 42px; margin: 4px 0 12px; border: 1px solid var(--color-accent); border-radius: 7px; background: var(--color-accent); color: var(--color-on-accent); font-weight: 700; }
 .threadList { display: grid; gap: 7px; }
 .threadSearchEmpty { padding: 24px 12px; display: grid; gap: 6px; color: var(--color-muted); text-align: center; }

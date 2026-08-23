@@ -73,6 +73,8 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [profiles, setProfiles] = useState<ChatProfile[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<ProfileKey | null>(null);
+  const [preferredProfile, setPreferredProfile] = useState<ProfileKey | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [prompt, setPrompt] = useState("");
@@ -179,19 +181,50 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
   }, [messages, isSending]);
 
   useEffect(() => {
-    fetch("/bff/users/me", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Unable to load user preferences");
-        return response.json() as Promise<{ preferences?: { theme?: ThemeName } }>;
+    Promise.all([
+      fetch("/bff/users/me", { cache: "no-store" }),
+      fetch("/bff/chat/profiles", { cache: "no-store" }),
+    ])
+      .then(async ([userResponse, profileResponse]) => {
+        if (userResponse.status === 401 || profileResponse.status === 401) {
+          window.location.assign("/login");
+          return null;
+        }
+        if (!userResponse.ok) throw new Error("Unable to load user preferences");
+        if (!profileResponse.ok) throw new Error("Unable to load profile roles");
+        return {
+          user: await userResponse.json() as {
+            preferences?: { theme?: ThemeName; preferred_profile?: ProfileKey };
+          },
+          items: await profileResponse.json() as ChatProfile[],
+        };
       })
-      .then(({ preferences }) => {
+      .then((result) => {
+        if (!result) return;
+        const { preferences } = result.user;
         const saved = preferences?.theme;
-        if (!saved || !themes.some((item) => item.value === saved)) return;
-        document.documentElement.dataset.theme = saved;
-        window.localStorage.setItem("skavan-theme", saved);
-        setTheme(saved);
+        if (saved && themes.some((item) => item.value === saved)) {
+          document.documentElement.dataset.theme = saved;
+          window.localStorage.setItem("skavan-theme", saved);
+          setTheme(saved);
+        }
+        const preferred = preferences?.preferred_profile;
+        const initial = result.items.some((item) => item.key === preferred)
+          ? preferred ?? null
+          : result.items[0]?.key ?? null;
+        setProfiles(result.items);
+        setPreferredProfile(initial);
+        setSelectedProfile(initial);
+        if (!result.items.length) {
+          setError("No Personal or Work role is present in your login token.");
+          setIsLoadingHistory(false);
+        }
       })
-      .catch(() => setTheme((document.documentElement.dataset.theme as ThemeName) || "neon-grid"));
+      .catch(() => {
+        setTheme((document.documentElement.dataset.theme as ThemeName) || "neon-grid");
+        setError("User preferences and profile roles could not be loaded.");
+        setIsLoadingHistory(false);
+      });
   }, []);
 
   async function selectTheme(value: ThemeName) {
@@ -213,30 +246,6 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
       setError("Theme preference could not be saved.");
     }
   }
-
-  useEffect(() => {
-    fetch("/bff/chat/profiles", { cache: "no-store" })
-      .then(async (response) => {
-        if (response.status === 401) {
-          window.location.assign("/login");
-          return [];
-        }
-        if (!response.ok) throw new Error("Unable to load profile roles");
-        return response.json() as Promise<ChatProfile[]>;
-      })
-      .then((items) => {
-        setProfiles(items);
-        setSelectedProfile(items[0]?.key ?? null);
-        if (!items.length) {
-          setError("No Personal or Work role is present in your login token.");
-          setIsLoadingHistory(false);
-        }
-      })
-      .catch(() => {
-        setError("Profile roles could not be loaded.");
-        setIsLoadingHistory(false);
-      });
-  }, []);
 
   useEffect(() => {
     if (!selectedProfile) return;
@@ -331,10 +340,27 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     }
   }
 
-  function selectProfile(profile: ProfileKey) {
+  async function selectProfile(profile: ProfileKey) {
     setError(null);
     setSelectedThreadId(null);
     setSelectedProfile(profile);
+    if (profiles.length < 2 || preferredProfile === profile) return;
+    const previous = preferredProfile;
+    setPreferredProfile(profile);
+    setIsSavingProfile(true);
+    try {
+      const response = await fetch("/bff/users/me/preferences/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile }),
+      });
+      if (!response.ok) throw new Error("Unable to save default profile");
+    } catch {
+      setPreferredProfile(previous);
+      setError("Default profile preference could not be saved.");
+    } finally {
+      setIsSavingProfile(false);
+    }
   }
 
   function selectThread(threadId: string) {
@@ -612,11 +638,14 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           <span>Shared Hermes workspace</span>
         </div>
         {profiles.length > 1 && (
-          <div className="profileSwitcher" role="group" aria-label="Active profile">
-            {profiles.map((profile) => (
-              <button key={profile.key} type="button" aria-pressed={selectedProfile === profile.key} onClick={() => selectProfile(profile.key)}>{profile.label}</button>
-            ))}
-          </div>
+          <>
+            <div className="profileSwitcher" role="group" aria-label="Active and default profile">
+              {profiles.map((profile) => (
+                <button key={profile.key} type="button" aria-pressed={selectedProfile === profile.key} title={`Use ${profile.label} and save it as your default`} onClick={() => selectProfile(profile.key)}>{profile.label}</button>
+              ))}
+            </div>
+            <p className="profilePreferenceStatus" aria-live="polite">{isSavingProfile ? "Saving default…" : `✓ ${profiles.find((item) => item.key === preferredProfile)?.label ?? "Profile"} opens by default`}</p>
+          </>
         )}
         <button className="newThreadButton" type="button" onClick={createThread}>＋ New chat</button>
         {renderThreadList()}
@@ -739,11 +768,14 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
               <button type="button" onClick={() => setIsThreadDrawerOpen(false)} aria-label="Close threads">×</button>
             </div>
             {profiles.length > 1 && (
-              <div className="profileSwitcher" role="group" aria-label="Active profile">
-                {profiles.map((profile) => (
-                  <button key={profile.key} type="button" aria-pressed={selectedProfile === profile.key} onClick={() => selectProfile(profile.key)}>{profile.label}</button>
-                ))}
-              </div>
+              <>
+                <div className="profileSwitcher" role="group" aria-label="Active and default profile">
+                  {profiles.map((profile) => (
+                    <button key={profile.key} type="button" aria-pressed={selectedProfile === profile.key} title={`Use ${profile.label} and save it as your default`} onClick={() => selectProfile(profile.key)}>{profile.label}</button>
+                  ))}
+                </div>
+                <p className="profilePreferenceStatus" aria-live="polite">{isSavingProfile ? "Saving default…" : `✓ ${profiles.find((item) => item.key === preferredProfile)?.label ?? "Profile"} opens by default`}</p>
+              </>
             )}
             <div className="workspaceSearch drawerSearch">
               <NavIcon kind="search" />
@@ -780,7 +812,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
 
       <nav className="mobileNavigation" aria-label="Mobile navigation">
         <button type="button" className="active" aria-current="page"><NavIcon kind="user" /><span>Chats</span></button>
-        <button type="button" disabled><NavIcon kind="groups" /><span>Profiles</span></button>
+        <button type="button" disabled={profiles.length < 2} onClick={() => setIsThreadDrawerOpen(true)}><NavIcon kind="groups" /><span>Profiles</span></button>
         <button type="button" disabled><NavIcon kind="settings" /><span>Settings</span></button>
       </nav>
     </main>

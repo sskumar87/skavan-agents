@@ -31,6 +31,7 @@ from app.identity import (
     get_external_subject,
     get_platform_user,
     get_user_profiles,
+    set_user_profile_preference,
     set_user_theme,
     synchronize_user,
 )
@@ -79,6 +80,10 @@ ThemeName = Literal[
 
 class ThemePreferenceUpdate(BaseModel):
     theme: ThemeName
+
+
+class ProfilePreferenceUpdate(BaseModel):
+    profile: Literal["personal", "work"]
 
 
 @lru_cache
@@ -230,6 +235,22 @@ async def update_theme_preference(
 ) -> PlatformUser:
     user_id = require_platform_user_id(x_skavan_user_id)
     user = await set_user_theme(session, user_id, request.theme)
+    if user is None:
+        raise HTTPException(status_code=404, detail="Platform user not found")
+    return PlatformUser.model_validate(user)
+
+
+@app.patch("/api/users/me/preferences/profile", response_model=PlatformUser, tags=["users"])
+async def update_profile_preference(
+    request: ProfilePreferenceUpdate,
+    x_skavan_user_id: str | None = Header(default=None),
+    session: AsyncSession = Depends(get_database_session),
+) -> PlatformUser:
+    user_id = require_platform_user_id(x_skavan_user_id)
+    try:
+        user = await set_user_profile_preference(session, user_id, request.profile)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     if user is None:
         raise HTTPException(status_code=404, detail="Platform user not found")
     return PlatformUser.model_validate(user)
