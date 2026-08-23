@@ -686,11 +686,22 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
               ref={promptRef}
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && event.ctrlKey && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  event.currentTarget.form?.requestSubmit();
+                }
+              }}
               placeholder={`Message ${threads.find((thread) => thread.id === selectedThreadId)?.title ?? "General"}...`}
               rows={1}
               disabled={!selectedProfile || isSending || isLoadingHistory}
             />
-            <button type="submit" disabled={!selectedProfile || !prompt.trim() || isSending || isLoadingHistory}>
+            <button
+              type="submit"
+              aria-keyshortcuts="Control+Enter"
+              title="Send (Ctrl+Enter)"
+              disabled={!selectedProfile || !prompt.trim() || isSending || isLoadingHistory}
+            >
               {isLoadingHistory ? "Loading" : isSending ? "Sending" : "Send"}
             </button>
           </form>
