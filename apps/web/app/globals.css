@@ -77,10 +77,11 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .threadGlyph { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: var(--color-accent-soft); color: var(--color-accent); font-size: 22px; }
 .threadItem span:last-child { min-width: 0; display: grid; gap: 5px; }.threadItem strong { font-size: 12px; }.threadItem small { overflow: hidden; color: var(--color-muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 
-.conversationPane { min-width: 0; min-height: 0; position: relative; display: grid; grid-template-rows: 78px minmax(0, 1fr) auto; border-right: 1px solid var(--color-border); overflow: hidden; }
-.conversationHeader { padding: 0 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--color-border); }
+.conversationPane { min-width: 0; min-height: 0; position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; border-right: 1px solid var(--color-border); overflow: hidden; }
+.conversationHeader { min-height: 78px; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--color-border); }
+.conversationHeader > div:first-child { min-width: 0; }
 .conversationHeader h1 { margin: 0 0 4px; font-size: 19px; }.conversationHeader p { margin: 0; color: var(--color-muted); font-size: 11px; }
-.status { display: flex; align-items: center; gap: 7px; color: var(--color-muted); font-size: 11px; text-transform: capitalize; }
+.status { flex: 0 0 auto; display: flex; align-items: center; gap: 7px; color: var(--color-muted); font-size: 11px; text-transform: capitalize; white-space: nowrap; }
 .statusDot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-success); box-shadow: 0 0 10px var(--color-success); }
 .status.offline .statusDot { background: var(--color-danger); box-shadow: 0 0 10px var(--color-danger); }.status.checking .statusDot { background: var(--color-muted); box-shadow: none; }
 .messages { min-height: 0; padding: 20px 24px 28px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; -webkit-overflow-scrolling: touch; }
@@ -170,7 +171,7 @@ textarea::placeholder { color: var(--color-muted); }
   .workspaceShell { height: 100dvh; min-height: 0; overflow: hidden; grid-template-columns: 1fr; grid-template-rows: 58px minmax(0, 1fr) calc(62px + env(safe-area-inset-bottom)); }
   .primaryRail { display: none; }.workspaceTopbar { grid-column: 1; padding: 8px 10px; grid-template-columns: 36px 1fr auto; gap: 8px; }
   .backButton,.themeMenuButton { width: 34px; min-width: 34px; height: 34px; }.workspaceSearch { min-width: 0; border: 0; background: transparent; }.workspaceSearch span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.workspaceSearch kbd { display: none; }.desktopAccount .accountName { display: none; }.desktopAccount .logoutButton { min-height: 34px; padding: 0 8px; }
-  .themeMenu { top: 52px; right: 8px; }.conversationPane { grid-row: 2; grid-column: 1; grid-template-rows: 64px minmax(0, 1fr) auto; min-height: 0; }.conversationHeader { padding: 0 14px; }
+  .themeMenu { top: 52px; right: 8px; }.conversationPane { grid-row: 2; grid-column: 1; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; }.conversationHeader { min-height: 64px; padding: 10px 14px; }
   .messages { padding: 16px 12px; }.message { width: fit-content; max-width: 100%; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; }.message.user { grid-template-columns: minmax(0, 1fr) 34px; }.messageAvatar { width: 32px; height: 32px; font-size: 15px; }.messageContent { padding: 12px; font-size: 13px; }
   .messageContent.markdown th,.messageContent.markdown td { padding: 7px 8px; }
   .composerArea { position: relative; z-index: 3; margin: 0 8px 8px; }.composer { grid-template-columns: 32px minmax(0, 1fr) auto; }.composerIcon { width: 32px; height: 38px; }.composer button { min-width: 62px; padding: 0 10px; }.hint { display: none; }
