@@ -120,9 +120,9 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 @keyframes stream-dot { 0%,70%,100% { opacity: .3; transform: translateY(0); } 35% { opacity: 1; transform: translateY(-3px); } }
 .pending { opacity: .72; }.pulse { color: var(--color-accent); letter-spacing: .12em; }
 .composerArea { margin: 0 16px 14px; padding: 9px; border: 1px solid var(--color-border); border-radius: 10px; background: var(--color-surface); box-shadow: var(--shadow-panel); }
-.composer { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.composer { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 8px; align-items: end; }
 .composerIcon { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid var(--color-border); border-radius: 7px; color: var(--color-muted); }
-textarea { width: 100%; min-height: 44px; max-height: 140px; padding: 12px; resize: vertical; border: 0; outline: none; background: transparent; color: var(--color-text); }
+textarea { width: 100%; min-height: 44px; max-height: min(30dvh, 220px); padding: 12px; resize: none; overflow-y: hidden; border: 0; outline: none; background: transparent; color: var(--color-text); line-height: 1.45; }
 textarea::placeholder { color: var(--color-muted); }
 .composer button { min-width: 82px; min-height: 42px; border: 1px solid var(--color-accent); border-radius: 7px; background: var(--color-accent); color: var(--color-on-accent); font-weight: 750; }
 .hint { margin: 9px 0 0; color: var(--color-muted); font-size: 9px; text-align: center; }.error { margin: 0 0 8px; color: var(--color-danger); font-size: 12px; }

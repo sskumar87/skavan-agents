@@ -92,6 +92,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
+  const promptRef = useRef<HTMLTextAreaElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const drawerSearchInputRef = useRef<HTMLInputElement>(null);
   const followBottomRef = useRef(true);
@@ -102,6 +103,16 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
       .then((payload: { status?: string }) => setHermesStatus(payload.status === "ok" ? "online" : "offline"))
       .catch(() => setHermesStatus("offline"));
   }, []);
+
+  useEffect(() => {
+    const textarea = promptRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    const maximumHeight = Number.parseFloat(window.getComputedStyle(textarea).maxHeight);
+    const nextHeight = Math.min(textarea.scrollHeight, maximumHeight);
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = textarea.scrollHeight > maximumHeight ? "auto" : "hidden";
+  }, [prompt]);
 
   useEffect(() => {
     function focusSearch(event: KeyboardEvent) {
@@ -664,6 +675,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
             <label className="srOnly" htmlFor="prompt">Message Hermes</label>
             <textarea
               id="prompt"
+              ref={promptRef}
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
               placeholder={`Message ${threads.find((thread) => thread.id === selectedThreadId)?.title ?? "General"}...`}
