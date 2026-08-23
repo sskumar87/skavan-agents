@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from datetime import datetime, timezone
 from uuid import UUID
@@ -6,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from app.hermes import HermesAdapter, HermesError
 import app.main as main
-from app.main import app, get_hermes_adapter
+from app.main import app, get_hermes_adapter, stream_with_heartbeat
 
 
 USER_ID = "d34ab70c-4cec-4361-86b2-e3b8c97241ec"
@@ -163,6 +164,23 @@ class LongHistoryHermesAdapter(FakeHermesAdapter):
             "id": 1, "role": "assistant", "content": "x" * 25_000,
             "timestamp": 1.0,
         }]
+
+
+def test_stream_heartbeat_keeps_an_idle_agent_connection_open() -> None:
+    async def delayed_stream() -> AsyncIterator[str]:
+        await asyncio.sleep(0.02)
+        yield "Completed"
+
+    async def collect() -> list[str | None]:
+        return [
+            item async for item in stream_with_heartbeat(
+                delayed_stream(), interval_seconds=0.001,
+            )
+        ]
+
+    events = asyncio.run(collect())
+    assert None in events
+    assert events[-1] == "Completed"
 
 
 def test_chat_uses_backend_hermes_adapter(monkeypatch) -> None:

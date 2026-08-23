@@ -475,7 +475,11 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
       if (buffer.trim()) handleBlock(buffer);
       if (!assistantAdded) throw new Error("Hermes returned an empty response.");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to reach Hermes.");
+      const detail = cause instanceof Error ? cause.message : "";
+      const interrupted = cause instanceof TypeError || detail === "Load failed" || detail === "Failed to fetch";
+      setError(interrupted
+        ? "Connection interrupted. Hermes may still be working; reopen this chat to refresh its saved response."
+        : detail || "Unable to reach Hermes.");
     } finally {
       setIsSending(false);
       setIsReceiving(false);

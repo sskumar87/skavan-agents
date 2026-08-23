@@ -1,4 +1,6 @@
+import asyncio
 import json
+from contextlib import suppress
 from collections.abc import AsyncIterator
 from datetime import datetime
 from functools import lru_cache
@@ -35,6 +37,30 @@ from app.identity import (
 
 
 app = FastAPI(title="Skavan Agents API", version="0.1.0")
+
+
+async def stream_with_heartbeat(
+    source: AsyncIterator[str], interval_seconds: float = 15.0,
+) -> AsyncIterator[str | None]:
+    """Keep public SSE connections active while Hermes is running tools."""
+    iterator = source.__aiter__()
+    pending = asyncio.create_task(anext(iterator))
+    try:
+        while True:
+            done, _ = await asyncio.wait({pending}, timeout=interval_seconds)
+            if not done:
+                yield None
+                continue
+            try:
+                yield pending.result()
+            except StopAsyncIteration:
+                break
+            pending = asyncio.create_task(anext(iterator))
+    finally:
+        if not pending.done():
+            pending.cancel()
+            with suppress(asyncio.CancelledError):
+                await pending
 
 
 class PlatformUser(BaseModel):
@@ -407,12 +433,14 @@ async def stream_hermes_session_chat(
 
     async def events() -> AsyncIterator[str]:
         try:
-            async for content in hermes.stream_session(
-                session_id,
-                request.message,
-                session_key=f"skavan:profile:{request.profile}",
-                profile=request.profile,
-            ):
+            source = hermes.stream_session(
+                session_id, request.message,
+                session_key=f"skavan:profile:{request.profile}", profile=request.profile,
+            )
+            async for content in stream_with_heartbeat(source):
+                if content is None:
+                    yield ": keep-alive\n\n"
+                    continue
                 yield format_sse("token", {"content": content})
             yield format_sse("done", {})
         except HermesError as exc:
@@ -478,11 +506,14 @@ async def stream_chat(
     async def events() -> AsyncIterator[str]:
         assistant_content: list[str] = []
         try:
-            async for content in hermes.stream(
+            source = hermes.stream(
                 hermes_messages,
-                session_key=f"skavan:profile:{request.profile}",
-                profile=request.profile,
-            ):
+                session_key=f"skavan:profile:{request.profile}", profile=request.profile,
+            )
+            async for content in stream_with_heartbeat(source):
+                if content is None:
+                    yield ": keep-alive\n\n"
+                    continue
                 assistant_content.append(content)
                 yield format_sse("token", {"content": content})
             if assistant_content:
