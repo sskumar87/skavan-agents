@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type ChatMessage = {
   id: string;
@@ -76,6 +78,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
   const [prompt, setPrompt] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [isReceiving, setIsReceiving] = useState(false);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hermesStatus, setHermesStatus] = useState<"checking" | "online" | "offline">("checking");
   const [theme, setTheme] = useState<ThemeName>("neon-grid");
@@ -388,6 +391,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     setError(null);
     setIsSending(true);
     setIsReceiving(false);
+    setStreamingMessageId(null);
     followBottomRef.current = true;
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(), role: "user", content: message,
@@ -440,6 +444,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
         if (!assistantAdded) {
           assistantAdded = true;
           setIsReceiving(true);
+          setStreamingMessageId(assistantId);
           setMessages((current) => [...current, { id: assistantId, role: "assistant", content: token }]);
         } else {
           setMessages((current) => current.map((item) => item.id === assistantId
@@ -463,6 +468,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     } finally {
       setIsSending(false);
       setIsReceiving(false);
+      setStreamingMessageId(null);
     }
   }
 
@@ -617,7 +623,22 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
                 <span className="messageAvatar">{isAssistant ? "H" : authorName.slice(0, 1).toUpperCase()}</span>
                 <div className="messageBody">
                   <div className="messageMeta">{authorName}</div>
-                  <p>{message.content}</p>
+                  <div className={`messageContent ${isAssistant ? "markdown" : "plain"}`}>
+                    {isAssistant ? (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          a: ({ children, ...props }) => <a {...props} target="_blank" rel="noreferrer noopener">{children}</a>,
+                        }}
+                      >{message.content}</ReactMarkdown>
+                    ) : message.content}
+                    {streamingMessageId === message.id && (
+                      <span className="streamingIndicator" role="status">
+                        <span aria-hidden="true"><i /><i /><i /></span>
+                        More response is coming
+                      </span>
+                    )}
+                  </div>
                 </div>
               </article>
             );
@@ -625,7 +646,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           {isSending && !isReceiving && (
             <article className="message assistant pending">
               <span className="messageAvatar">H</span>
-              <div className="messageBody"><div className="messageMeta">Hermes · Agent</div><p>Processing<span className="pulse">...</span></p></div>
+              <div className="messageBody"><div className="messageMeta">Hermes · Agent</div><div className="messageContent plain">Processing<span className="pulse">...</span></div></div>
             </article>
           )}
         </div>
