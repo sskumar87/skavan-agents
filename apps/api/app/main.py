@@ -94,8 +94,10 @@ class ChatResponse(BaseModel):
     message: ChatMessage
 
 
-class StoredChatMessage(ChatMessage):
+class StoredChatMessage(BaseModel):
     id: str
+    role: Literal["system", "user", "assistant"]
+    content: str = Field(min_length=1)
     created_at: str
     is_current_user: bool
     author_name: str | None = None

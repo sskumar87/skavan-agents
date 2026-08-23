@@ -155,6 +155,16 @@ class FailingHermesAdapter:
         raise HermesError("Hermes is temporarily unavailable.")
 
 
+class LongHistoryHermesAdapter(FakeHermesAdapter):
+    async def session_messages(self, session_id: str, *, profile: str):
+        assert session_id == "terminal-session-1"
+        assert profile == "personal"
+        return [{
+            "id": 1, "role": "assistant", "content": "x" * 25_000,
+            "timestamp": 1.0,
+        }]
+
+
 def test_chat_uses_backend_hermes_adapter(monkeypatch) -> None:
     configure_conversation_fakes(monkeypatch)
     app.dependency_overrides[get_hermes_adapter] = lambda: FakeHermesAdapter()
@@ -258,6 +268,21 @@ def test_profile_member_can_list_and_read_hermes_sessions(monkeypatch) -> None:
     assert messages.status_code == 200
     assert [item["content"] for item in messages.json()] == ["Inspect it", "It is healthy"]
     assert messages.json()[0]["author_name"] == "Terminal user"
+
+
+def test_hermes_session_history_allows_existing_long_messages(monkeypatch) -> None:
+    configure_conversation_fakes(monkeypatch)
+    app.dependency_overrides[get_hermes_adapter] = lambda: LongHistoryHermesAdapter()
+    try:
+        response = TestClient(app).get(
+            "/api/hermes/sessions/terminal-session-1/messages?profile=personal",
+            headers={"X-Skavan-User-Id": USER_ID},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert len(response.json()[0]["content"]) == 25_000
 
 
 def test_profile_member_can_continue_hermes_session(monkeypatch) -> None:
