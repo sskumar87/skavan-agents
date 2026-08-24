@@ -116,6 +116,9 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
   const [theme, setTheme] = useState<ThemeName>("neon-grid");
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [isThreadDrawerOpen, setIsThreadDrawerOpen] = useState(false);
+  const [isDesktopThreadRailCollapsed, setIsDesktopThreadRailCollapsed] = useState(false);
+  const [isContextOpen, setIsContextOpen] = useState(false);
+  const [usesThreadDrawer, setUsesThreadDrawer] = useState(false);
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [deletingThread, setDeletingThread] = useState<ChatThread | null>(null);
@@ -167,8 +170,36 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     requestAnimationFrame(() => drawerSearchInputRef.current?.focus());
   }, [isThreadDrawerOpen]);
 
+  useEffect(() => {
+    const laptopLayout = window.matchMedia("(min-width: 901px) and (max-width: 1440px)");
+    const wideLayout = window.matchMedia("(min-width: 1441px)");
+    const compactLayout = window.matchMedia("(max-width: 900px)");
+    const syncLaptopLayout = () => {
+      setIsDesktopThreadRailCollapsed(laptopLayout.matches);
+      setIsContextOpen(wideLayout.matches);
+      setUsesThreadDrawer(compactLayout.matches);
+    };
+    syncLaptopLayout();
+    laptopLayout.addEventListener("change", syncLaptopLayout);
+    wideLayout.addEventListener("change", syncLaptopLayout);
+    compactLayout.addEventListener("change", syncLaptopLayout);
+    return () => {
+      laptopLayout.removeEventListener("change", syncLaptopLayout);
+      wideLayout.removeEventListener("change", syncLaptopLayout);
+      compactLayout.removeEventListener("change", syncLaptopLayout);
+    };
+  }, []);
+
   function openMobileSearch() {
     if (window.matchMedia("(max-width: 900px)").matches) setIsThreadDrawerOpen(true);
+  }
+
+  function toggleThreadNavigation() {
+    if (window.matchMedia("(max-width: 900px)").matches) {
+      setIsThreadDrawerOpen(true);
+      return;
+    }
+    setIsDesktopThreadRailCollapsed((collapsed) => !collapsed);
   }
 
   function updateScrollControls() {
@@ -643,7 +674,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
   const activeThreadSource = threads.find((thread) => thread.id === selectedThreadId)?.source;
 
   return (
-    <main className="workspaceShell">
+    <main className={`workspaceShell ${isDesktopThreadRailCollapsed ? "threadRailCollapsed" : ""} ${isContextOpen ? "" : "contextRailCollapsed"}`}>
       <aside className="primaryRail">
         <a className="workspaceBrand" href="/" aria-label="Skav Platform home">
           <img src="/skav-mark.svg" alt="" aria-hidden="true" />
@@ -659,10 +690,10 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
         <button
           className="backButton"
           type="button"
-          aria-label="Open threads"
-          aria-expanded={isThreadDrawerOpen}
-          onClick={() => setIsThreadDrawerOpen(true)}
-        >‹</button>
+          aria-label={usesThreadDrawer ? "Open chats" : isDesktopThreadRailCollapsed ? "Show chats" : "Hide chats"}
+          aria-expanded={usesThreadDrawer ? isThreadDrawerOpen : !isDesktopThreadRailCollapsed}
+          onClick={toggleThreadNavigation}
+        >{!usesThreadDrawer && isDesktopThreadRailCollapsed ? "›" : "‹"}</button>
         <div className="workspaceSearch">
           <NavIcon kind="search" />
           <label className="srOnly" htmlFor="chat-search">Search chats</label>
@@ -679,6 +710,13 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           {!searchQuery && <kbd>⌘ K</kbd>}
         </div>
         <div className="workspaceActions">
+          <button
+            className="contextMenuButton"
+            type="button"
+            aria-label={isContextOpen ? "Hide context" : "Show context"}
+            aria-expanded={isContextOpen}
+            onClick={() => setIsContextOpen((open) => !open)}
+          ><NavIcon kind="context" /></button>
           <button
             className="themeMenuButton"
             type="button"
@@ -816,7 +854,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
         </div>
       </section>
 
-      <aside className="contextRail">
+      <aside className={`contextRail ${isContextOpen ? "open" : ""}`}>
         <h2>Context</h2>
         <section className="contextSection">
           <span className="contextLabel">Signed in user</span>
@@ -836,6 +874,10 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           <p>✓ Answer questions</p><p>✓ Conversation history</p><p>✓ Theme preference</p>
         </section>
       </aside>
+
+      {isContextOpen && (
+        <button className="contextDrawerBackdrop" type="button" aria-label="Close context" onClick={() => setIsContextOpen(false)} />
+      )}
 
       {isThreadDrawerOpen && (
         <>
@@ -903,6 +945,7 @@ function NavIcon({ kind }: { kind: string }) {
     groups: "M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8-1a2.5 2.5 0 1 0 0-5M2.5 20a5.5 5.5 0 0 1 11 0m1-6a5 5 0 0 1 7 4.6",
     shield: "M12 3 5 6v5c0 4.5 2.8 8 7 10 4.2-2 7-5.5 7-10V6l-7-3Zm-3 9 2 2 4-5",
     link: "M9.5 14.5 14.5 9M7 17H5a4 4 0 0 1 0-8h3m8 0h3a4 4 0 0 1 0 8h-3",
+    context: "M4 5h16v14H4zM15 5v14",
     settings: "M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm0-12v2m0 13v2m8.5-8.5h-2m-13 0h-2m14.5-6-1.5 1.5m-9 9L6 18m12 0-1.5-1.5m-9-9L6 6",
     search: "m20 20-4.5-4.5M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z",
   };
