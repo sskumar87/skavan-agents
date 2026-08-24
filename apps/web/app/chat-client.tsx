@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
+import { FormEvent, MouseEvent as ReactMouseEvent, ReactNode, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -92,6 +92,51 @@ function normalizeHermesMarkdown(content: string): string {
     }
   }
   return lines.join("\n");
+}
+
+function containsMarkdownTable(content: string): boolean {
+  return /(^|\n)\s*\|?.+\|.+\n\s*\|?\s*:?-{3,}\s*\|/m.test(content);
+}
+
+function sortableValue(value: string): number | string {
+  const normalized = value.trim().replaceAll(",", "").replace(/^[$£€]\s*/, "");
+  if (/^\d{4}-\d{2}-\d{2}(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/.test(normalized)) {
+    const timestamp = Date.parse(normalized.replace(" ", "T"));
+    if (!Number.isNaN(timestamp)) return timestamp;
+  }
+  if (/^[+-]?(?:\d+\.?\d*|\.\d+)(?:%|[A-Za-z]+)?$/.test(normalized)) {
+    const numeric = Number.parseFloat(normalized);
+    if (!Number.isNaN(numeric)) return numeric;
+  }
+  return normalized.toLocaleLowerCase();
+}
+
+function sortMarkdownTable(event: ReactMouseEvent<HTMLButtonElement>) {
+  const header = event.currentTarget.closest("th");
+  const table = event.currentTarget.closest("table");
+  const body = table?.tBodies.item(0);
+  if (!header || !table || !body) return;
+
+  const column = header.cellIndex;
+  const previousColumn = Number.parseInt(table.dataset.sortColumn ?? "-1", 10);
+  const direction = previousColumn === column && table.dataset.sortDirection === "ascending"
+    ? "descending"
+    : "ascending";
+  const multiplier = direction === "ascending" ? 1 : -1;
+  const rows = Array.from(body.rows);
+  rows.sort((left, right) => {
+    const leftValue = sortableValue(left.cells.item(column)?.textContent ?? "");
+    const rightValue = sortableValue(right.cells.item(column)?.textContent ?? "");
+    if (typeof leftValue === "number" && typeof rightValue === "number") {
+      return (leftValue - rightValue) * multiplier;
+    }
+    return String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true }) * multiplier;
+  });
+  body.append(...rows);
+  table.dataset.sortColumn = String(column);
+  table.dataset.sortDirection = direction;
+  table.querySelectorAll("th").forEach((item) => item.removeAttribute("aria-sort"));
+  header.setAttribute("aria-sort", direction);
 }
 
 function wait(milliseconds: number): Promise<void> {
@@ -778,12 +823,14 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           <div className="dayDivider"><span>Today</span></div>
           {messages.map((message) => {
             const isAssistant = message.role === "assistant";
+            const renderedContent = isAssistant ? normalizeHermesMarkdown(message.content) : message.content;
+            const hasTable = isAssistant && containsMarkdownTable(renderedContent);
             const isOwn = !isAssistant && (message.isCurrentUser ?? true);
             const isTerminalUser = !isAssistant && activeThreadSource === "hermes";
             const isRightAligned = isOwn || isTerminalUser;
             const authorName = isAssistant ? "Hermes · Agent" : (message.authorName || (isOwn ? userName : "Group member"));
             return (
-              <article className={`message ${isAssistant ? "assistant" : isRightAligned ? "user" : "participant"}`} key={message.id}>
+              <article className={`message ${isAssistant ? "assistant" : isRightAligned ? "user" : "participant"} ${hasTable ? "hasTable" : ""}`} key={message.id}>
                 <span className="messageAvatar">{isAssistant ? "H" : authorName.slice(0, 1).toUpperCase()}</span>
                 <div className="messageBody">
                   <div className="messageMeta">{authorName}</div>
@@ -793,8 +840,15 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
                         remarkPlugins={[remarkGfm]}
                         components={{
                           a: ({ children, ...props }) => <a {...props} target="_blank" rel="noreferrer noopener">{children}</a>,
+                          th: ({ children, ...props }) => (
+                            <th {...props}>
+                              <button className="markdownSortButton" type="button" onClick={sortMarkdownTable} title="Sort this column">
+                                <span>{children}</span>
+                              </button>
+                            </th>
+                          ),
                         }}
-                      >{normalizeHermesMarkdown(message.content)}</ReactMarkdown>
+                      >{renderedContent}</ReactMarkdown>
                     ) : message.content}
                     {streamingMessageId === message.id && (
                       <span className="streamingIndicator" role="status">
