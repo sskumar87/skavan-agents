@@ -78,6 +78,22 @@ function mapStoredMessages(history: StoredChatMessage[]): ChatMessage[] {
   }));
 }
 
+function normalizeHermesMarkdown(content: string): string {
+  const lines = content.split("\n");
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    const headerStartsWithNumberSign = /^\s*#\s*\|/.test(lines[index]);
+    const nextLineIsTableDivider = /^\s*:?-{3,}\s*\|/.test(lines[index + 1]);
+    if (!headerStartsWithNumberSign || !nextLineIsTableDivider) continue;
+
+    for (let rowIndex = index; rowIndex < lines.length; rowIndex += 1) {
+      const row = lines[rowIndex].trim();
+      if (!row || !row.includes("|")) break;
+      lines[rowIndex] = `${row.startsWith("|") ? "" : "| "}${row}${row.endsWith("|") ? "" : " |"}`;
+    }
+  }
+  return lines.join("\n");
+}
+
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
@@ -740,7 +756,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
                         components={{
                           a: ({ children, ...props }) => <a {...props} target="_blank" rel="noreferrer noopener">{children}</a>,
                         }}
-                      >{message.content}</ReactMarkdown>
+                      >{normalizeHermesMarkdown(message.content)}</ReactMarkdown>
                     ) : message.content}
                     {streamingMessageId === message.id && (
                       <span className="streamingIndicator" role="status">
