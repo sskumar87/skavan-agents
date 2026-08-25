@@ -72,7 +72,7 @@ For Hermes, verify the exact release's private API binding, persistent state, pr
 1. Record release SHA and take a verified Laptop 1 backup.
 2. Validate private PostgreSQL reachability and review current/target Alembic revisions.
 3. Start reverse proxy, web and API; enable verified ZITADEL/Hermes only after their gates are complete.
-4. Using the database superuser, enable `vector` once in the target database if it is not already installed. Then run Alembic as a separate, restricted migration role. Apply forward only; record resulting revision. Never autogenerate or casually downgrade production schema.
+4. Using the database superuser, enable `vector` once in the target database if it is not already installed. Configure Laptop 2 with `infra/laptop2/configure-product-database.ps1`; it saves `skavan_app` as `DATABASE_URL` and the table-owning `skavan_migrator` as `SKAVAN_MIGRATION_DATABASE_URL`. Run `infra/laptop2/run-product-migrations.ps1` for every deployment that includes a revision. The wrapper refuses the runtime account. Apply forward only; record the resulting revision. Never autogenerate or casually downgrade production schema.
 5. Complete ZITADEL client configuration, restart affected services, then enable Tunnel traffic.
 
 ## 9. Acceptance checklist

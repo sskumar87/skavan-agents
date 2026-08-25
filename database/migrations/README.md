@@ -10,14 +10,39 @@ The `group_memories.embedding` contract is `vector(1536)` in V1. A model change 
 
 ## Local usage
 
-Install this directory's dependencies in an isolated Python environment, then set a non-secret local connection string outside source control:
+Use the dedicated table-owner role for migrations. In this deployment the roles
+are deliberately separate:
+
+- `skavan_app` is the restricted API runtime account. It cannot alter tables.
+- `skavan_migrator` owns the product tables and is the only account Alembic uses.
+- `skav_user` is the Laptop 1 database administrator and is used only for
+  initial provisioning or recovery, never by the application.
+
+Laptop 2 stores both connection strings in the protected phase-one environment
+file. `DATABASE_URL` contains `skavan_app`; `SKAVAN_MIGRATION_DATABASE_URL`
+contains `skavan_migrator`. Never substitute the runtime URL when running
+Alembic. Use the checked-in wrapper from the repository root:
 
 ```powershell
-$env:SKAVAN_DATABASE_URL = 'postgresql+asyncpg://skavan:local-password@localhost:5432/skavan'
+.\infra\laptop2\run-product-migrations.ps1
+```
+
+The wrapper loads the protected migration URL without displaying it, verifies
+that it names `skavan_migrator`, applies the forward migration, and prints the
+resulting Alembic revision.
+
+For a disposable local database, set a migration connection string outside
+source control:
+
+```powershell
+$env:SKAVAN_MIGRATION_DATABASE_URL = 'postgresql+asyncpg://skavan_migrator:local-password@localhost:5432/skavan'
 alembic -c database/migrations/alembic.ini upgrade head
 ```
 
-`DATABASE_URL` is accepted for consistency with the API service, but `SKAVAN_DATABASE_URL` takes precedence. The URL must use `postgresql+asyncpg`; no credentials or connection strings belong in committed files.
+`SKAVAN_MIGRATION_DATABASE_URL` takes precedence. Legacy
+`SKAVAN_DATABASE_URL` and `DATABASE_URL` fallbacks exist only for disposable
+development environments. The URL must use `postgresql+asyncpg`; no credentials
+or connection strings belong in committed files.
 
 Useful checks:
 

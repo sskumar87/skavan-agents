@@ -22,10 +22,14 @@ target_metadata = None
 
 
 def database_url() -> str:
-    url = os.getenv("SKAVAN_DATABASE_URL") or os.getenv("DATABASE_URL")
+    url = (
+        os.getenv("SKAVAN_MIGRATION_DATABASE_URL")
+        or os.getenv("SKAVAN_DATABASE_URL")
+        or os.getenv("DATABASE_URL")
+    )
     if not url:
         raise RuntimeError(
-            "Set SKAVAN_DATABASE_URL (or DATABASE_URL) to a postgresql+asyncpg URL."
+            "Set SKAVAN_MIGRATION_DATABASE_URL to a postgresql+asyncpg URL."
         )
     if not url.startswith("postgresql+asyncpg://"):
         raise RuntimeError("Database URL must use the postgresql+asyncpg driver.")

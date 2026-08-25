@@ -4,7 +4,8 @@ param(
     [string]$DatabaseHost = "192.168.1.49",
     [int]$DatabasePort = 5432,
     [string]$DatabaseName = "skavan",
-    [string]$DatabaseUser = "skavan_app"
+    [string]$DatabaseUser = "skavan_app",
+    [string]$MigrationDatabaseUser = "skavan_migrator"
 )
 
 $ErrorActionPreference = "Stop"
@@ -44,17 +45,28 @@ $environmentFile = Join-Path $SecretDirectory ".env"
 $databasePassword = ConvertTo-PlainText (
     Read-Host "Existing PostgreSQL password for '$DatabaseUser'" -AsSecureString
 )
+$migrationDatabasePassword = ConvertTo-PlainText (
+    Read-Host "Existing PostgreSQL password for '$MigrationDatabaseUser'" -AsSecureString
+)
 
 if ([string]::IsNullOrWhiteSpace($databasePassword)) {
     throw "The database password cannot be empty."
+}
+if ([string]::IsNullOrWhiteSpace($migrationDatabasePassword)) {
+    throw "The migration database password cannot be empty."
 }
 
 $encodedUser = [Uri]::EscapeDataString($DatabaseUser)
 $encodedPassword = [Uri]::EscapeDataString($databasePassword)
 $encodedDatabase = [Uri]::EscapeDataString($DatabaseName)
 $databaseUrl = "postgresql+asyncpg://$encodedUser`:$encodedPassword@$DatabaseHost`:$DatabasePort/$encodedDatabase"
+$encodedMigrationUser = [Uri]::EscapeDataString($MigrationDatabaseUser)
+$encodedMigrationPassword = [Uri]::EscapeDataString($migrationDatabasePassword)
+$migrationDatabaseUrl = "postgresql+asyncpg://$encodedMigrationUser`:$encodedMigrationPassword@$DatabaseHost`:$DatabasePort/$encodedDatabase"
 
 Set-EnvironmentValue $environmentFile "DATABASE_URL" $databaseUrl
+Set-EnvironmentValue $environmentFile "SKAVAN_MIGRATION_DATABASE_URL" $migrationDatabaseUrl
 
 Write-Host "Product database configuration saved without displaying the password."
 Write-Host "Environment: $environmentFile"
+Write-Host "Runtime and migration accounts are stored separately."
