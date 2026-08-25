@@ -39,6 +39,7 @@ that can be continued from both Skavan and Hermes Web.
 | Deployment | Laptop 2 runs the web, API, Hermes, ZITADEL and reverse proxy services with Docker Compose; web, API and Hermes are healthy after the latest deployment. |
 | UI design system | The approved nerdy visual system, semantic theme tokens, icons and responsive rules are recorded in `docs/architecture/ui-design-system.md`. |
 | Saved-task response contract | Skavan adds an invisible Hermes instruction for repeatable-task, saved-prompt and prompt-template requests. Hermes must re-read the selected skill's template during the current run and preserve its headings and fenced blocks instead of reconstructing prose from chat memory. |
+| Mobile plain-text block wrapping | Markdown fences labelled `text`, `plaintext` or `txt` wrap within the message viewport on mobile and desktop; programming-language code fences retain horizontal scrolling and tables keep their independent responsive scroller. |
 
 ## P0 — next implementation work
 
