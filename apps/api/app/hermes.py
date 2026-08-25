@@ -10,6 +10,31 @@ from urllib.parse import quote
 import httpx2
 
 
+TASK_TEMPLATE_INSTRUCTIONS = (
+    "Do not answer this request from prior conversation memory. Load the relevant "
+    "Hermes skill and read its referenced prompt-template file during this run. "
+    "Follow the skill's user-facing response contract exactly, including its "
+    "headings and fenced text blocks. Do not paraphrase, summarize, merge fields "
+    "into prose, or convert the template to a table. If the template cannot be "
+    "read, report that instead of reconstructing it."
+)
+
+
+def task_template_instructions(message: str) -> str | None:
+    """Require a fresh skill-template read for saved/repeatable-task requests."""
+    normalized = " ".join(message.lower().split())
+    asks_for_tasks = (
+        (
+            ("repetitive" in normalized or "repeatable" in normalized)
+            and "task" in normalized
+        )
+        or "saved prompt" in normalized
+        or "prompt template" in normalized
+        or "task list" in normalized
+    )
+    return TASK_TEMPLATE_INSTRUCTIONS if asks_for_tasks else None
+
+
 class HermesError(RuntimeError):
     """A user-safe Hermes integration failure."""
 
@@ -72,9 +97,17 @@ class HermesAdapter:
         session_key: str | None = None,
         profile: str | None = None,
     ) -> str:
+        instruction = (
+            task_template_instructions(messages[-1]["content"])
+            if messages else None
+        )
+        effective_messages = (
+            [{"role": "system", "content": instruction}, *messages]
+            if instruction else messages
+        )
         payload = {
             "model": self.model,
-            "messages": messages,
+            "messages": effective_messages,
             "stream": False,
         }
         try:
@@ -104,9 +137,17 @@ class HermesAdapter:
         session_key: str,
         profile: str,
     ) -> AsyncIterator[str]:
+        instruction = (
+            task_template_instructions(messages[-1]["content"])
+            if messages else None
+        )
+        effective_messages = (
+            [{"role": "system", "content": instruction}, *messages]
+            if instruction else messages
+        )
         payload = {
             "model": self.model,
-            "messages": messages,
+            "messages": effective_messages,
             "stream": True,
         }
         received_content = False
@@ -257,6 +298,10 @@ class HermesAdapter:
         profile: str,
     ) -> AsyncIterator[str]:
         encoded_id = quote(session_id, safe="")
+        instruction = task_template_instructions(message)
+        payload = {"message": message}
+        if instruction:
+            payload["instructions"] = instruction
         received_content = False
         event_name: str | None = None
         try:
@@ -265,7 +310,7 @@ class HermesAdapter:
                     "POST",
                     self.endpoint(f"/api/sessions/{encoded_id}/chat/stream", profile),
                     headers=self.request_headers(session_key, profile),
-                    json={"message": message},
+                    json=payload,
                 ) as response:
                     response.raise_for_status()
                     async for line in response.aiter_lines():

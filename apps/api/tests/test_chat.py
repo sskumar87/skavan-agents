@@ -5,7 +5,12 @@ from uuid import UUID
 
 from fastapi.testclient import TestClient
 
-from app.hermes import HermesAdapter, HermesError
+from app.hermes import (
+    HermesAdapter,
+    HermesError,
+    TASK_TEMPLATE_INSTRUCTIONS,
+    task_template_instructions,
+)
 import app.hermes as hermes_module
 import app.main as main
 from app.main import app, get_hermes_adapter, stream_with_heartbeat
@@ -30,6 +35,62 @@ def test_hermes_session_key_is_sent_as_a_request_header() -> None:
     assert adapter.endpoint("/v1/chat/completions", "work") == (
         "http://hermes:8642/p/work/v1/chat/completions"
     )
+
+
+def test_saved_task_requests_require_a_fresh_skill_template_read() -> None:
+    assert task_template_instructions(
+        "What repetitive swing-scan tasks can I perform?"
+    ) == TASK_TEMPLATE_INSTRUCTIONS
+    assert task_template_instructions("How is the market?") is None
+
+
+def test_session_stream_sends_template_instruction_invisibly(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        async def aiter_lines(self):
+            yield 'event: assistant.delta'
+            yield 'data: {"delta":"Formatted"}'
+            yield ''
+
+    class FakeStreamContext:
+        async def __aenter__(self):
+            return FakeResponse()
+
+        async def __aexit__(self, *_args):
+            return False
+
+    class FakeAsyncClient:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return False
+
+        def stream(self, method, url, *, headers, json):
+            captured.update(method=method, url=url, headers=headers, json=json)
+            return FakeStreamContext()
+
+    monkeypatch.setattr(hermes_module.httpx2, "AsyncClient", FakeAsyncClient)
+    adapter = HermesAdapter(base_url="http://hermes:8642", api_key="a" * 32)
+
+    async def collect() -> list[str]:
+        return [item async for item in adapter.stream_session(
+            "session-1", "What repetitive tasks can I perform?",
+            session_key="skavan:profile:personal", profile="personal",
+        )]
+
+    assert asyncio.run(collect()) == ["Formatted"]
+    assert captured["json"] == {
+        "message": "What repetitive tasks can I perform?",
+        "instructions": TASK_TEMPLATE_INSTRUCTIONS,
+    }
 
 
 def test_hermes_session_messages_loads_every_page(monkeypatch) -> None:
