@@ -31,6 +31,7 @@ type StoredThread = {
   title: string;
   last_active?: string | null;
   session_kind?: "unified" | "legacy";
+  hermes_session_id?: string | null;
 };
 type HermesSession = { id: string; title: string; preview?: string | null; last_active?: number | null };
 type ProfileKey = "personal" | "work";
@@ -479,13 +480,16 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
         if (!threadResponse.ok) throw new Error("Unable to load chats");
         const stored = await threadResponse.json() as StoredThread[];
         const native = sessionResponse.ok ? await sessionResponse.json() as HermesSession[] : [];
+        const platformSessionIds = new Set(stored
+          .map((thread) => thread.hermes_session_id)
+          .filter((sessionId): sessionId is string => Boolean(sessionId)));
         return newestFirst([
           ...stored.map((thread): ChatThread => ({
             id: `skavan:${thread.id}`, nativeId: thread.id, title: thread.title, source: "skavan",
             sessionKind: thread.session_kind,
             activityAt: activityTimestamp(thread.last_active),
           })),
-          ...native.map((session): ChatThread => ({
+          ...native.filter((session) => !platformSessionIds.has(session.id)).map((session): ChatThread => ({
             id: `hermes:${session.id}`, nativeId: session.id, title: session.title,
             source: "hermes", preview: session.preview, activityAt: activityTimestamp(session.last_active),
           })),

@@ -563,6 +563,7 @@ def test_thread_refresh_uses_terminal_title_and_activity(monkeypatch) -> None:
         "title": "Terminal investigation",
         "last_active": "1970-01-01T00:02:03.500000Z",
         "session_kind": "unified",
+        "hermes_session_id": "terminal-session-1",
     }]
 
 

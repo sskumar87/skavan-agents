@@ -41,6 +41,7 @@ that can be continued from both Skavan and Hermes Web.
 | Saved-task response contract | Skavan adds an invisible Hermes instruction for repeatable-task, saved-prompt and prompt-template requests. Hermes must re-read the selected skill's template during the current run and preserve its headings and fenced blocks instead of reconstructing prose from chat memory. |
 | Mobile plain-text block wrapping | Markdown fences labelled `text`, `plaintext` or `txt` wrap within the message viewport on mobile and desktop; programming-language code fences retain horizontal scrolling and tables keep their independent responsive scroller. |
 | Mobile stream recovery for all chats | If a mobile browser drops a long SSE response, both platform-controlled and directly listed Hermes chats poll their authoritative saved history and replace the partial response automatically instead of leaving a raw `Load failed` error. |
+| Unified-chat list deduplication | Platform chats expose their existing Hermes session binding to the web client. The merged chat list suppresses the corresponding native-session row by stable session ID while retaining genuinely separate conversations that merely share a title. |
 
 ## P0 — next implementation work
 

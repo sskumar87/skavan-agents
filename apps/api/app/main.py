@@ -141,6 +141,7 @@ class ChatThread(BaseModel):
     title: str
     last_active: datetime | None = None
     session_kind: Literal["unified", "legacy"] | None = None
+    hermes_session_id: str | None = None
 
 
 class ChatThreadCreate(BaseModel):
