@@ -22,10 +22,16 @@ type ChatThread = {
   nativeId: string;
   title: string;
   source: ThreadSource;
+  sessionKind?: "unified" | "legacy";
   preview?: string | null;
   activityAt: number;
 };
-type StoredThread = { id: string; title: string; last_active?: string | null };
+type StoredThread = {
+  id: string;
+  title: string;
+  last_active?: string | null;
+  session_kind?: "unified" | "legacy";
+};
 type HermesSession = { id: string; title: string; preview?: string | null; last_active?: number | null };
 type ProfileKey = "personal" | "work";
 type ChatProfile = { key: ProfileKey; label: string };
@@ -476,6 +482,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
         return newestFirst([
           ...stored.map((thread): ChatThread => ({
             id: `skavan:${thread.id}`, nativeId: thread.id, title: thread.title, source: "skavan",
+            sessionKind: thread.session_kind,
             activityAt: activityTimestamp(thread.last_active),
           })),
           ...native.map((session): ChatThread => ({
@@ -530,6 +537,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
       const stored = await response.json() as StoredThread;
       const thread: ChatThread = {
         id: `skavan:${stored.id}`, nativeId: stored.id, title: stored.title, source: "skavan",
+        sessionKind: stored.session_kind,
         activityAt: activityTimestamp(stored.last_active) || Date.now(),
       };
       setThreads((current) => [thread, ...current]);
@@ -784,7 +792,13 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
               <span className="threadGlyph">{thread.source === "hermes" ? "H" : "◇"}</span>
               <span>
                 <strong>{thread.title}</strong>
-                <small>{thread.source === "hermes" ? "Hermes terminal session" : `Shared ${selectedProfile} chat`}</small>
+                <small>{
+                  thread.source === "hermes"
+                    ? "Hermes terminal session"
+                    : thread.sessionKind === "legacy"
+                      ? `Legacy ${selectedProfile} chat`
+                      : `Shared ${selectedProfile} chat`
+                }</small>
               </span>
             </button>
             {thread.source === "skavan" && (

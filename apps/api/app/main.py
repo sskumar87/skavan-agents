@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator
 from datetime import datetime
 from functools import lru_cache
 from typing import Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import Response, StreamingResponse
@@ -17,6 +17,7 @@ from app.conversations import (
     append_message,
     create_profile_thread,
     ensure_profile_context,
+    get_profile_thread_session_id,
     list_profile_threads,
     load_messages,
     rename_profile_thread,
@@ -138,6 +139,7 @@ class ChatThread(BaseModel):
     id: str
     title: str
     last_active: datetime | None = None
+    session_kind: Literal["unified", "legacy"] | None = None
 
 
 class ChatThreadCreate(BaseModel):
@@ -263,6 +265,10 @@ async def require_profile_access(
         raise HTTPException(status_code=403, detail="Profile access denied")
 
 
+def get_hermes_adapter() -> HermesAdapter:
+    return HermesAdapter.from_environment()
+
+
 @app.get("/api/chat/profiles", response_model=list[ChatProfile], tags=["chat"])
 async def chat_profiles(
     x_skavan_user_id: str | None = Header(default=None),
@@ -290,12 +296,22 @@ async def chat_threads(
 async def new_chat_thread(
     request: ChatThreadCreate,
     x_skavan_user_id: str | None = Header(default=None),
+    hermes: HermesAdapter = Depends(get_hermes_adapter),
 ) -> ChatThread:
     user_id = require_platform_user_id(x_skavan_user_id)
+    thread_id = uuid4()
+    hermes_session_id = f"skavan-{thread_id}"
     async with get_session_factory()() as session:
         await require_profile_access(session, user_id, request.profile)
         await ensure_profile_context(session, user_id, request.profile)
-        stored = await create_profile_thread(session, user_id, request.profile)
+        try:
+            await hermes.create_session(hermes_session_id, profile=request.profile)
+        except HermesError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        stored = await create_profile_thread(
+            session, user_id, request.profile, thread_id=thread_id,
+            hermes_session_id=hermes_session_id,
+        )
     return ChatThread.model_validate(stored)
 
 
@@ -358,10 +374,6 @@ async def chat_history(
         )
         for item in stored
     ]
-
-
-def get_hermes_adapter() -> HermesAdapter:
-    return HermesAdapter.from_environment()
 
 
 @app.get("/api/hermes/health", tags=["hermes"])
@@ -518,24 +530,33 @@ async def stream_chat(
         thread_id = await ensure_profile_context(session, user_id, request.profile) if request.thread_id is None else request.thread_id
         try:
             await require_profile_thread(session, request.profile, thread_id)
+            hermes_session_id = await get_profile_thread_session_id(
+                session, request.profile, thread_id,
+            )
         except ValueError as exc:
             raise HTTPException(status_code=404, detail="Thread not found") from exc
         await append_message(
             session, thread_id=thread_id, author_kind="USER",
             author_user_id=user_id, content=latest.content,
         )
-        stored = await load_messages(session, thread_id, limit=50)
-    hermes_messages = [
-        {"role": item["role"], "content": item["content"]} for item in stored
-    ]
+        stored = [] if hermes_session_id else await load_messages(session, thread_id, limit=50)
+    hermes_messages = [{"role": item["role"], "content": item["content"]} for item in stored]
 
     async def events() -> AsyncIterator[str]:
         assistant_content: list[str] = []
         try:
-            source = hermes.stream(
-                hermes_messages,
-                session_key=f"skavan:profile:{request.profile}", profile=request.profile,
-            )
+            if hermes_session_id:
+                source = hermes.stream_session(
+                    hermes_session_id, latest.content,
+                    session_key=f"skavan:profile:{request.profile}",
+                    profile=request.profile,
+                )
+            else:
+                source = hermes.stream(
+                    hermes_messages,
+                    session_key=f"skavan:profile:{request.profile}",
+                    profile=request.profile,
+                )
             async for content in stream_with_heartbeat(source):
                 if content is None:
                     yield ": keep-alive\n\n"

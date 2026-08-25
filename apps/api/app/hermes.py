@@ -168,6 +168,29 @@ class HermesAdapter:
         except (httpx2.HTTPError, AttributeError, TypeError, ValueError) as exc:
             raise HermesError("Hermes sessions are currently unavailable.") from exc
 
+    async def create_session(
+        self, session_id: str, *, profile: str, source: str = "skavan",
+    ) -> str:
+        try:
+            async with httpx2.AsyncClient(timeout=15.0) as client:
+                response = await client.post(
+                    self.endpoint("/api/sessions", profile),
+                    headers=self.request_headers(profile=profile),
+                    json={"id": session_id, "source": source},
+                )
+            if response.status_code == 409:
+                return session_id
+            response.raise_for_status()
+            data: Any = response.json().get("session", {})
+            created_id = data.get("id") if isinstance(data, dict) else None
+            if created_id != session_id:
+                raise TypeError("Hermes returned an invalid session")
+            return created_id
+        except httpx2.HTTPStatusError as exc:
+            raise HermesError("Hermes rejected the session creation request.") from exc
+        except (httpx2.HTTPError, AttributeError, TypeError, ValueError) as exc:
+            raise HermesError("Hermes sessions are currently unavailable.") from exc
+
     async def session_messages(
         self, session_id: str, *, profile: str,
     ) -> list[dict[str, Any]]:

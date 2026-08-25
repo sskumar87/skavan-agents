@@ -101,6 +101,23 @@ async def fake_require_profile_thread(session, profile, thread_id):
     return thread_id
 
 
+async def fake_get_profile_thread_session_id(session, profile, thread_id):
+    assert profile == "personal"
+    return None
+
+
+async def fake_create_profile_thread(
+    session, user_id, profile, *, thread_id, hermes_session_id,
+):
+    assert user_id == UUID(USER_ID)
+    assert profile == "personal"
+    assert hermes_session_id == f"skavan-{thread_id}"
+    return {
+        "id": str(thread_id), "title": "New chat",
+        "last_active": datetime.now(timezone.utc), "session_kind": "unified",
+    }
+
+
 async def fake_rename_profile_thread(session, profile, thread_id, title):
     assert profile == "personal"
     assert title == "Market research"
@@ -134,12 +151,22 @@ def configure_conversation_fakes(monkeypatch) -> None:
     monkeypatch.setattr(main, "append_message", fake_append_message)
     monkeypatch.setattr(main, "load_messages", fake_load_messages)
     monkeypatch.setattr(main, "require_profile_thread", fake_require_profile_thread)
+    monkeypatch.setattr(main, "get_profile_thread_session_id", fake_get_profile_thread_session_id)
+    monkeypatch.setattr(main, "create_profile_thread", fake_create_profile_thread)
     monkeypatch.setattr(main, "rename_profile_thread", fake_rename_profile_thread)
     monkeypatch.setattr(main, "archive_profile_thread", fake_archive_profile_thread)
     monkeypatch.setattr(main, "get_user_profiles", fake_get_user_profiles)
 
 
 class FakeHermesAdapter:
+    async def create_session(
+        self, session_id: str, *, profile: str, source: str = "skavan",
+    ) -> str:
+        assert session_id.startswith("skavan-")
+        assert profile == "personal"
+        assert source == "skavan"
+        return session_id
+
     async def health(self) -> bool:
         return True
 
@@ -210,6 +237,17 @@ class LongHistoryHermesAdapter(FakeHermesAdapter):
             "id": 1, "role": "assistant", "content": "x" * 25_000,
             "timestamp": 1.0,
         }]
+
+
+class UnifiedHermesAdapter(FakeHermesAdapter):
+    async def stream_session(
+        self, session_id: str, message: str, *, session_key: str, profile: str,
+    ) -> AsyncIterator[str]:
+        assert session_id == "skavan-f3a79589-1097-4bf4-8b09-893c39946f13"
+        assert message == "Hello Hermes"
+        assert session_key == "skavan:profile:personal"
+        assert profile == "personal"
+        yield "Unified response"
 
 
 def test_stream_heartbeat_keeps_an_idle_agent_connection_open() -> None:
@@ -283,6 +321,23 @@ def test_chat_history_marks_the_authenticated_author(monkeypatch) -> None:
         "is_current_user": True,
         "author_name": "Skavan",
     }
+
+
+def test_new_chat_creates_a_bound_hermes_session(monkeypatch) -> None:
+    configure_conversation_fakes(monkeypatch)
+    app.dependency_overrides[get_hermes_adapter] = lambda: FakeHermesAdapter()
+    try:
+        response = TestClient(app).post(
+            "/api/chat/threads",
+            json={"profile": "personal"},
+            headers={"X-Skavan-User-Id": USER_ID},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json()["title"] == "New chat"
+    assert response.json()["session_kind"] == "unified"
 
 
 def test_profile_member_can_rename_shared_postgres_chat(monkeypatch) -> None:
@@ -386,6 +441,34 @@ def test_chat_streams_normalized_sse_events(monkeypatch) -> None:
     assert response.text == (
         'event: token\ndata: {"content":"Hello "}\n\n'
         'event: token\ndata: {"content":"from Hermes"}\n\n'
+        "event: done\ndata: {}\n\n"
+    )
+
+
+def test_bound_chat_streams_through_hermes_session(monkeypatch) -> None:
+    configure_conversation_fakes(monkeypatch)
+
+    async def bound_session_id(session, profile, thread_id):
+        return "skavan-f3a79589-1097-4bf4-8b09-893c39946f13"
+
+    monkeypatch.setattr(main, "get_profile_thread_session_id", bound_session_id)
+    app.dependency_overrides[get_hermes_adapter] = lambda: UnifiedHermesAdapter()
+    try:
+        response = TestClient(app).post(
+            "/api/chat/stream",
+            json={
+                "thread_id": "f3a79589-1097-4bf4-8b09-893c39946f13",
+                "profile": "personal",
+                "messages": [{"role": "user", "content": "Hello Hermes"}],
+            },
+            headers={"X-Skavan-User-Id": USER_ID},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.text == (
+        'event: token\ndata: {"content":"Unified response"}\n\n'
         "event: done\ndata: {}\n\n"
     )
 

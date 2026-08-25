@@ -27,6 +27,7 @@ threads = table(
     "threads",
     column("id", PG_UUID(as_uuid=True)), column("group_id", PG_UUID(as_uuid=True)),
     column("title", String(300)), column("created_by", PG_UUID(as_uuid=True)),
+    column("hermes_session_id", String(255)),
     column("archived_at", DateTime(timezone=True)),
     column("created_at", DateTime(timezone=True)), column("updated_at", DateTime(timezone=True)),
 )
@@ -88,31 +89,60 @@ async def list_profile_threads(session: AsyncSession, profile: str) -> list[dict
             select(
                 threads.c.id,
                 threads.c.title,
+                threads.c.hermes_session_id,
                 func.coalesce(func.max(messages.c.created_at), threads.c.created_at).label("last_active"),
             )
             .select_from(threads.outerjoin(messages, messages.c.thread_id == threads.c.id))
             .where(threads.c.group_id == group_id, threads.c.archived_at.is_(None))
-            .group_by(threads.c.id, threads.c.title, threads.c.created_at)
+            .group_by(
+                threads.c.id, threads.c.title, threads.c.hermes_session_id,
+                threads.c.created_at,
+            )
             .order_by(func.coalesce(func.max(messages.c.created_at), threads.c.created_at).desc())
         )
     ).all()
-    return [{"id": str(row.id), "title": row.title, "last_active": row.last_active} for row in rows]
+    return [{
+        "id": str(row.id), "title": row.title, "last_active": row.last_active,
+        "session_kind": "unified" if row.hermes_session_id else "legacy",
+    } for row in rows]
 
 
 async def create_profile_thread(
-    session: AsyncSession, user_id: UUID, profile: str,
+    session: AsyncSession, user_id: UUID, profile: str, *, thread_id: UUID,
+    hermes_session_id: str,
 ) -> dict[str, str]:
     group_id, _ = profile_context_ids(profile)
-    thread_id = uuid4()
     now = datetime.now(timezone.utc)
     await session.execute(
         insert(threads).values(
             id=thread_id, group_id=group_id, title="New chat", created_by=user_id,
+            hermes_session_id=hermes_session_id,
             archived_at=None, created_at=now, updated_at=now,
         )
     )
     await session.commit()
-    return {"id": str(thread_id), "title": "New chat", "last_active": now}
+    return {
+        "id": str(thread_id), "title": "New chat", "last_active": now,
+        "session_kind": "unified",
+    }
+
+
+async def get_profile_thread_session_id(
+    session: AsyncSession, profile: str, thread_id: UUID,
+) -> str | None:
+    group_id, _ = profile_context_ids(profile)
+    row = (
+        await session.execute(
+            select(threads.c.hermes_session_id).where(
+                threads.c.id == thread_id,
+                threads.c.group_id == group_id,
+                threads.c.archived_at.is_(None),
+            )
+        )
+    ).one_or_none()
+    if row is None:
+        raise ValueError("Thread not found")
+    return row.hermes_session_id
 
 
 async def rename_profile_thread(
