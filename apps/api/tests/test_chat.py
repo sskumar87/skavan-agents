@@ -166,7 +166,11 @@ class FakeHermesAdapter:
         return [{
             "id": "terminal-session-1", "title": "Terminal investigation",
             "preview": "Inspect the service", "message_count": 2,
-            "last_active": 123.5,
+            "last_active": 123.5, "end_reason": "tui_shutdown",
+        }, {
+            "id": "api-execution-1", "title": "Inspect the service now",
+            "preview": "Inspect the service now", "message_count": 2,
+            "last_active": 124.5, "end_reason": None,
         }]
 
     async def session_messages(self, session_id: str, *, profile: str):
@@ -323,6 +327,7 @@ def test_profile_member_can_list_and_read_hermes_sessions(monkeypatch) -> None:
         app.dependency_overrides.clear()
 
     assert sessions.status_code == 200
+    assert len(sessions.json()) == 1
     assert sessions.json()[0]["title"] == "Terminal investigation"
     assert sessions.json()[0]["source"] == "hermes"
     assert messages.status_code == 200

@@ -388,6 +388,11 @@ async def hermes_sessions(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     result: list[HermesSessionSummary] = []
     for item in stored:
+        # Stateless API executions create internal Hermes sessions whose auto-title is
+        # the user's prompt. They are implementation artifacts, not sidebar chats.
+        # Completed TUI sessions are the native conversations users can resume here.
+        if item.get("end_reason") != "tui_shutdown":
+            continue
         session_id = item.get("id")
         if not isinstance(session_id, str) or not session_id:
             continue
