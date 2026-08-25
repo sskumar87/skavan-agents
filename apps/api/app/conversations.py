@@ -104,7 +104,36 @@ async def list_profile_threads(session: AsyncSession, profile: str) -> list[dict
     return [{
         "id": str(row.id), "title": row.title, "last_active": row.last_active,
         "session_kind": "unified" if row.hermes_session_id else "legacy",
+        "hermes_session_id": row.hermes_session_id,
     } for row in rows]
+
+
+async def synchronize_profile_thread_titles(
+    session: AsyncSession, profile: str, titles_by_session_id: dict[str, str],
+) -> None:
+    """Mirror Hermes' user-controlled titles into product thread metadata."""
+    if not titles_by_session_id:
+        return
+    group_id, _ = profile_context_ids(profile)
+    now = datetime.now(timezone.utc)
+    changed = False
+    for hermes_session_id, title in titles_by_session_id.items():
+        clean_title = title.strip()
+        if not clean_title:
+            continue
+        result = await session.execute(
+            update(threads)
+            .where(
+                threads.c.group_id == group_id,
+                threads.c.hermes_session_id == hermes_session_id,
+                threads.c.archived_at.is_(None),
+                threads.c.title != clean_title,
+            )
+            .values(title=clean_title, updated_at=now)
+        )
+        changed = changed or bool(result.rowcount)
+    if changed:
+        await session.commit()
 
 
 async def create_profile_thread(

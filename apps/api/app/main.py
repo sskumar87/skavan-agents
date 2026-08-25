@@ -2,7 +2,7 @@ import asyncio
 import json
 from contextlib import suppress
 from collections.abc import AsyncIterator
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Literal
 from uuid import UUID, uuid4
@@ -19,6 +19,7 @@ from app.conversations import (
     ensure_profile_context,
     get_profile_thread_session_id,
     list_profile_threads,
+    synchronize_profile_thread_titles,
     load_messages,
     rename_profile_thread,
     require_profile_thread,
@@ -283,12 +284,43 @@ async def chat_profiles(
 async def chat_threads(
     profile: Literal["personal", "work"] = "personal",
     x_skavan_user_id: str | None = Header(default=None),
+    hermes: HermesAdapter = Depends(get_hermes_adapter),
 ) -> list[ChatThread]:
     user_id = require_platform_user_id(x_skavan_user_id)
     async with get_session_factory()() as session:
         await require_profile_access(session, user_id, profile)
         await ensure_profile_context(session, user_id, profile)
         stored = await list_profile_threads(session, profile)
+        try:
+            hermes_sessions = await hermes.list_sessions(profile=profile)
+        except HermesError:
+            hermes_sessions = []
+        sessions_by_id = {
+            item["id"]: item for item in hermes_sessions
+            if isinstance(item.get("id"), str)
+        }
+        titles_by_session_id: dict[str, str] = {}
+        for item in stored:
+            session_id = item.get("hermes_session_id")
+            native = sessions_by_id.get(session_id)
+            if native is None:
+                continue
+            native_title = native.get("title")
+            if isinstance(native_title, str) and native_title.strip():
+                item["title"] = native_title.strip()
+                titles_by_session_id[session_id] = native_title
+            native_last_active = native.get("last_active")
+            if isinstance(native_last_active, (int, float)):
+                item["last_active"] = datetime.fromtimestamp(
+                    native_last_active, tz=timezone.utc,
+                )
+        await synchronize_profile_thread_titles(
+            session, profile, titles_by_session_id,
+        )
+        stored.sort(
+            key=lambda item: item.get("last_active") or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
     return [ChatThread.model_validate(item) for item in stored]
 
 
@@ -320,6 +352,7 @@ async def rename_chat_thread(
     thread_id: UUID,
     request: ChatThreadUpdate,
     x_skavan_user_id: str | None = Header(default=None),
+    hermes: HermesAdapter = Depends(get_hermes_adapter),
 ) -> ChatThread:
     user_id = require_platform_user_id(x_skavan_user_id)
     title = request.title.strip()
@@ -328,9 +361,18 @@ async def rename_chat_thread(
     async with get_session_factory()() as session:
         await require_profile_access(session, user_id, request.profile)
         try:
+            hermes_session_id = await get_profile_thread_session_id(
+                session, request.profile, thread_id,
+            )
+            if hermes_session_id:
+                await hermes.rename_session(
+                    hermes_session_id, title, profile=request.profile,
+                )
             stored = await rename_profile_thread(session, request.profile, thread_id, title)
         except ValueError as exc:
             raise HTTPException(status_code=404, detail="Thread not found") from exc
+        except HermesError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
     return ChatThread.model_validate(stored)
 
 
@@ -355,6 +397,7 @@ async def chat_history(
     profile: Literal["personal", "work"] = "personal",
     thread_id: UUID | None = None,
     x_skavan_user_id: str | None = Header(default=None),
+    hermes: HermesAdapter = Depends(get_hermes_adapter),
 ) -> list[StoredChatMessage]:
     user_id = require_platform_user_id(x_skavan_user_id)
     async with get_session_factory()() as session:
@@ -362,9 +405,24 @@ async def chat_history(
         resolved_thread_id = await ensure_profile_context(session, user_id, profile) if thread_id is None else thread_id
         try:
             await require_profile_thread(session, profile, resolved_thread_id)
+            hermes_session_id = await get_profile_thread_session_id(
+                session, profile, resolved_thread_id,
+            )
         except ValueError as exc:
             raise HTTPException(status_code=404, detail="Thread not found") from exc
         stored = await load_messages(session, resolved_thread_id)
+    if hermes_session_id:
+        try:
+            native = await hermes.session_messages(
+                hermes_session_id, profile=profile,
+            )
+        except HermesError as exc:
+            status = 404 if "not found" in str(exc).lower() else 503
+            raise HTTPException(status_code=status, detail=str(exc)) from exc
+        return normalize_hermes_history(
+            hermes_session_id, native, user_id=user_id,
+            product_messages=stored,
+        )
     return [
         StoredChatMessage(
             id=item["id"], role=item["role"], content=item["content"],
@@ -374,6 +432,48 @@ async def chat_history(
         )
         for item in stored
     ]
+
+
+def normalize_hermes_history(
+    session_id: str,
+    stored: list[dict[str, object]],
+    *,
+    user_id: UUID,
+    product_messages: list[dict[str, object]] | None = None,
+) -> list[StoredChatMessage]:
+    """Render Hermes as transcript authority and recover product author labels."""
+    mirrored = list(product_messages or [])
+    matched_product_indexes: set[int] = set()
+    result: list[StoredChatMessage] = []
+    for index, item in enumerate(stored):
+        role = item.get("role")
+        content = item.get("content")
+        if role not in {"user", "assistant"} or not isinstance(content, str) or not content.strip():
+            continue
+        product_message: dict[str, object] | None = None
+        for product_index, candidate in enumerate(mirrored):
+            if product_index in matched_product_indexes:
+                continue
+            if candidate.get("role") == role and candidate.get("content") == content:
+                matched_product_indexes.add(product_index)
+                product_message = candidate
+                break
+        raw_id = item.get("id")
+        timestamp = item.get("timestamp")
+        author_user_id = product_message.get("author_user_id") if product_message else None
+        author_name = product_message.get("author_name") if product_message else None
+        result.append(StoredChatMessage(
+            id=str(raw_id) if raw_id is not None else f"{session_id}:{index}",
+            role=role,
+            content=content,
+            created_at=str(timestamp) if timestamp is not None else "",
+            is_current_user=author_user_id == str(user_id),
+            author_name=(
+                str(author_name) if author_name
+                else ("Hermes" if role == "assistant" else "Terminal user")
+            ),
+        ))
+    return result
 
 
 @app.get("/api/hermes/health", tags=["hermes"])
@@ -439,23 +539,7 @@ async def hermes_session_messages(
     except HermesError as exc:
         status = 404 if "not found" in str(exc).lower() else 503
         raise HTTPException(status_code=status, detail=str(exc)) from exc
-    result: list[StoredChatMessage] = []
-    for index, item in enumerate(stored):
-        role = item.get("role")
-        content = item.get("content")
-        if role not in {"user", "assistant"} or not isinstance(content, str) or not content.strip():
-            continue
-        raw_id = item.get("id")
-        timestamp = item.get("timestamp")
-        result.append(StoredChatMessage(
-            id=str(raw_id) if raw_id is not None else f"{session_id}:{index}",
-            role=role,
-            content=content,
-            created_at=str(timestamp) if timestamp is not None else "",
-            is_current_user=False,
-            author_name="Hermes" if role == "assistant" else "Terminal user",
-        ))
-    return result
+    return normalize_hermes_history(session_id, stored, user_id=user_id)
 
 
 @app.post("/api/hermes/sessions/{session_id}/chat/stream", tags=["hermes"])

@@ -73,6 +73,44 @@ def test_hermes_session_messages_loads_every_page(monkeypatch) -> None:
     assert messages[-1]["id"] == 501
 
 
+def test_hermes_session_rename_uses_native_metadata_endpoint(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class FakeResponse:
+        status_code = 200
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"session": {"id": "session/one", "title": "Market research"}}
+
+    class FakeAsyncClient:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return False
+
+        async def patch(self, url, *, headers, json):
+            captured.update(url=url, headers=headers, json=json)
+            return FakeResponse()
+
+    monkeypatch.setattr(hermes_module.httpx2, "AsyncClient", FakeAsyncClient)
+    adapter = HermesAdapter(base_url="http://hermes:8642", api_key="a" * 32)
+
+    result = asyncio.run(adapter.rename_session(
+        "session/one", "Market research", profile="personal",
+    ))
+
+    assert result["title"] == "Market research"
+    assert captured["url"] == "http://hermes:8642/api/sessions/session%2Fone"
+    assert captured["json"] == {"title": "Market research"}
+
+
 class FakeSessionContext:
     async def __aenter__(self):
         return object()
@@ -124,6 +162,22 @@ async def fake_rename_profile_thread(session, profile, thread_id, title):
     return {"id": str(thread_id), "title": title}
 
 
+async def fake_list_profile_threads(session, profile):
+    assert profile == "personal"
+    return [{
+        "id": "f3a79589-1097-4bf4-8b09-893c39946f13",
+        "title": "Postgres title",
+        "last_active": datetime.fromtimestamp(100, tz=timezone.utc),
+        "session_kind": "unified",
+        "hermes_session_id": "terminal-session-1",
+    }]
+
+
+async def fake_synchronize_profile_thread_titles(session, profile, titles):
+    assert profile == "personal"
+    assert titles == {"terminal-session-1": "Terminal investigation"}
+
+
 async def fake_archive_profile_thread(session, profile, thread_id):
     assert profile == "personal"
     assert thread_id == UUID("f3a79589-1097-4bf4-8b09-893c39946f13")
@@ -154,11 +208,19 @@ def configure_conversation_fakes(monkeypatch) -> None:
     monkeypatch.setattr(main, "get_profile_thread_session_id", fake_get_profile_thread_session_id)
     monkeypatch.setattr(main, "create_profile_thread", fake_create_profile_thread)
     monkeypatch.setattr(main, "rename_profile_thread", fake_rename_profile_thread)
+    monkeypatch.setattr(main, "list_profile_threads", fake_list_profile_threads)
+    monkeypatch.setattr(
+        main, "synchronize_profile_thread_titles",
+        fake_synchronize_profile_thread_titles,
+    )
     monkeypatch.setattr(main, "archive_profile_thread", fake_archive_profile_thread)
     monkeypatch.setattr(main, "get_user_profiles", fake_get_user_profiles)
 
 
 class FakeHermesAdapter:
+    def __init__(self):
+        self.renamed_sessions: list[tuple[str, str, str]] = []
+
     async def create_session(
         self, session_id: str, *, profile: str, source: str = "skavan",
     ) -> str:
@@ -169,6 +231,12 @@ class FakeHermesAdapter:
 
     async def health(self) -> bool:
         return True
+
+    async def rename_session(
+        self, session_id: str, title: str, *, profile: str,
+    ):
+        self.renamed_sessions.append((session_id, title, profile))
+        return {"id": session_id, "title": title}
 
     async def complete(
         self, messages: list[dict[str, str]], *, session_key: str | None = None,
@@ -240,6 +308,16 @@ class LongHistoryHermesAdapter(FakeHermesAdapter):
 
 
 class UnifiedHermesAdapter(FakeHermesAdapter):
+    async def session_messages(self, session_id: str, *, profile: str):
+        assert session_id == "skavan-f3a79589-1097-4bf4-8b09-893c39946f13"
+        assert profile == "personal"
+        return [
+            {"id": 1, "role": "user", "content": "Hello Hermes", "timestamp": 1.0},
+            {"id": 2, "role": "assistant", "content": "Hello from Hermes", "timestamp": 2.0},
+            {"id": 3, "role": "user", "content": "Terminal follow-up", "timestamp": 3.0},
+            {"id": 4, "role": "assistant", "content": "Terminal answer", "timestamp": 4.0},
+        ]
+
     async def stream_session(
         self, session_id: str, message: str, *, session_key: str, profile: str,
     ) -> AsyncIterator[str]:
@@ -353,6 +431,78 @@ def test_profile_member_can_rename_shared_postgres_chat(monkeypatch) -> None:
         "id": "f3a79589-1097-4bf4-8b09-893c39946f13",
         "title": "Market research",
     }
+
+
+def test_bound_chat_history_includes_messages_added_from_terminal(monkeypatch) -> None:
+    configure_conversation_fakes(monkeypatch)
+
+    async def bound_session_id(session, profile, thread_id):
+        return "skavan-f3a79589-1097-4bf4-8b09-893c39946f13"
+
+    monkeypatch.setattr(main, "get_profile_thread_session_id", bound_session_id)
+    app.dependency_overrides[get_hermes_adapter] = lambda: UnifiedHermesAdapter()
+    try:
+        response = TestClient(app).get(
+            "/api/chat/history",
+            headers={"X-Skavan-User-Id": USER_ID},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert [item["content"] for item in response.json()] == [
+        "Hello Hermes", "Hello from Hermes", "Terminal follow-up", "Terminal answer",
+    ]
+    assert response.json()[0]["is_current_user"] is True
+    assert response.json()[0]["author_name"] == "Skavan"
+    assert response.json()[2]["is_current_user"] is False
+    assert response.json()[2]["author_name"] == "Terminal user"
+
+
+def test_bound_chat_rename_updates_the_native_hermes_title(monkeypatch) -> None:
+    configure_conversation_fakes(monkeypatch)
+
+    async def bound_session_id(session, profile, thread_id):
+        return "skavan-f3a79589-1097-4bf4-8b09-893c39946f13"
+
+    monkeypatch.setattr(main, "get_profile_thread_session_id", bound_session_id)
+    hermes = FakeHermesAdapter()
+    app.dependency_overrides[get_hermes_adapter] = lambda: hermes
+    try:
+        response = TestClient(app).patch(
+            "/api/chat/threads/f3a79589-1097-4bf4-8b09-893c39946f13",
+            json={"profile": "personal", "title": "  Market research  "},
+            headers={"X-Skavan-User-Id": USER_ID},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert hermes.renamed_sessions == [(
+        "skavan-f3a79589-1097-4bf4-8b09-893c39946f13",
+        "Market research",
+        "personal",
+    )]
+
+
+def test_thread_refresh_uses_terminal_title_and_activity(monkeypatch) -> None:
+    configure_conversation_fakes(monkeypatch)
+    app.dependency_overrides[get_hermes_adapter] = lambda: FakeHermesAdapter()
+    try:
+        response = TestClient(app).get(
+            "/api/chat/threads?profile=personal",
+            headers={"X-Skavan-User-Id": USER_ID},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == [{
+        "id": "f3a79589-1097-4bf4-8b09-893c39946f13",
+        "title": "Terminal investigation",
+        "last_active": "1970-01-01T00:02:03.500000Z",
+        "session_kind": "unified",
+    }]
 
 
 def test_profile_member_can_archive_shared_postgres_chat(monkeypatch) -> None:

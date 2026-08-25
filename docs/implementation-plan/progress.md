@@ -1,6 +1,6 @@
 # Delivery progress
 
-Last updated: 2026-08-23
+Last updated: 2026-08-25
 
 This is the project execution ledger. A component is marked complete only after
 it has been implemented and verified. Material architecture changes require an
@@ -22,6 +22,9 @@ that can be continued from both Skavan and Hermes Web.
 | Profile authorization | Personal maps to the Hermes default profile and Work maps to the named `work` profile. Users can hold one or both ZITADEL profile roles. |
 | Shared profile conversations | Profile members can list shared PostgreSQL chats and Hermes-native sessions; there is deliberately no user-level transcript isolation inside a profile. |
 | Hermes-native continuation in Skavan | Hermes sessions can be listed, read and continued from the Skavan UI through the profile-scoped Sessions API. |
+| Unified Hermes session identity | Every newly created Skavan chat creates and stores one immutable Hermes session ID; subsequent turns use Hermes' Sessions API and legacy PostgreSQL-only chats remain explicitly labelled. |
+| Cross-client transcript refresh | A unified Skavan chat reads its complete transcript from Hermes, so messages added from Hermes terminal/Web appear after reopening or refreshing the chat; PostgreSQL message rows recover known Skavan author labels. |
+| Cross-client title synchronization | Skavan rename invokes Hermes' native session-title mutation (the same persistence primitive as terminal `/title`), while chat-list refresh mirrors terminal title and activity changes back into product metadata. |
 | User identity presentation | Registered names are synchronized into PostgreSQL and the given name is displayed in the authenticated UI. |
 | Theme preference | Four approved themes are available and the selected theme is persisted in the user's PostgreSQL JSONB preferences. |
 | Default profile preference | Users with two profiles can save the profile that opens by default on mobile, tablet and desktop. Single-profile users enter their only authorized profile automatically. |
@@ -39,11 +42,7 @@ that can be continued from both Skavan and Hermes Web.
 
 | Task | Definition of done |
 | --- | --- |
-| Record unified-session architecture | Add an ADR that supersedes the split-authority part of ADR-014. Define one Skavan chat → one Hermes profile/session ID, PostgreSQL metadata/mirroring responsibilities and failure recovery. |
-| Create Hermes sessions for Skavan chats | A new Skavan chat creates or binds an actual Hermes session in the selected profile and stores that immutable session ID against the product thread. |
-| Route all new chat turns through Sessions API | Skavan uses `/api/sessions/{id}/chat/stream` (or `/p/work/...`) instead of stateless `/v1/chat/completions`; the same chat is visible in Skavan and Hermes Web after refresh. |
-| Existing-chat policy | Decide and implement either a reviewed one-time migration of PostgreSQL-only chats or a clearly labelled legacy/read-only path. No silent or duplicate migration. |
-| Cross-client refresh | Skavan detects messages written through Hermes Web/terminal and refreshes the active conversation without requiring profile switching. Define polling or a supported session-event mechanism. |
+| Live cross-client refresh | Add bounded polling or a supported session-event mechanism so terminal/Web messages appear while a Skavan chat remains open, without requiring manual refresh. |
 | Per-session writer protection | Serialize turns for the same Hermes session, provide busy/queued UX, handle Hermes 429 responses and prevent simultaneous Skavan/Hermes writers from duplicating work. |
 | Tool and interruption events | Preserve and render safe Hermes tool-progress, completion and interruption events instead of exposing only text tokens. |
 | Profile acceptance suite | Verify Personal-only, Work-only, both profiles, saved default, revoked default, all roles revoked, two-user shared chat visibility and wrong-profile denial. These tests are release-blocking. |
@@ -87,3 +86,11 @@ that can be continued from both Skavan and Hermes Web.
 - No public Hermes API or Hermes API key in the browser.
 - No voice, native mobile app, Telegram or WhatsApp until the web session model
   is stable.
+
+## Task-capture rule
+
+When implementation or testing reveals unplanned product, security, deployment
+or reliability work, add it to this ledger in the same development session.
+Record completed/deployed behavior under **Completed and deployed** and unfinished
+work under the appropriate P0/P1/P2 section. Chat history is not the project
+task system.

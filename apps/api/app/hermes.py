@@ -191,6 +191,30 @@ class HermesAdapter:
         except (httpx2.HTTPError, AttributeError, TypeError, ValueError) as exc:
             raise HermesError("Hermes sessions are currently unavailable.") from exc
 
+    async def rename_session(
+        self, session_id: str, title: str, *, profile: str,
+    ) -> dict[str, Any]:
+        """Apply Hermes' native session title mutation used by `/title`."""
+        encoded_id = quote(session_id, safe="")
+        try:
+            async with httpx2.AsyncClient(timeout=15.0) as client:
+                response = await client.patch(
+                    self.endpoint(f"/api/sessions/{encoded_id}", profile),
+                    headers=self.request_headers(profile=profile),
+                    json={"title": title},
+                )
+            response.raise_for_status()
+            data: Any = response.json().get("session", {})
+            if not isinstance(data, dict) or data.get("id") != session_id:
+                raise TypeError("Hermes returned an invalid session")
+            return data
+        except httpx2.HTTPStatusError as exc:
+            if exc.response.status_code == 404:
+                raise HermesError("Hermes session was not found.") from exc
+            raise HermesError("Hermes rejected the session title.") from exc
+        except (httpx2.HTTPError, AttributeError, TypeError, ValueError) as exc:
+            raise HermesError("Hermes sessions are currently unavailable.") from exc
+
     async def session_messages(
         self, session_id: str, *, profile: str,
     ) -> list[dict[str, Any]]:
