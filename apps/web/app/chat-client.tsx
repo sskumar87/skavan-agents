@@ -714,16 +714,16 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     } catch (cause) {
       const detail = cause instanceof Error ? cause.message : "";
       const interrupted = cause instanceof TypeError || detail === "Load failed" || detail === "Failed to fetch";
-      if (interrupted && activeThread?.source === "hermes" && selectedProfile) {
+      if (interrupted && activeThread && selectedProfile) {
         setError("Connection interrupted. Recovering the saved Hermes response…");
+        const historyUrl = activeThread.source === "hermes"
+          ? `/bff/hermes/sessions/${encodeURIComponent(activeThread.nativeId)}/messages?profile=${encodeURIComponent(selectedProfile)}`
+          : `/bff/chat/history?profile=${encodeURIComponent(selectedProfile)}&thread_id=${encodeURIComponent(activeThread.nativeId)}`;
         let recovered = false;
         for (let attempt = 0; attempt < 12; attempt += 1) {
           await wait(attempt === 0 ? 750 : 2500);
           try {
-            const response = await fetch(
-              `/bff/hermes/sessions/${encodeURIComponent(activeThread.nativeId)}/messages?profile=${encodeURIComponent(selectedProfile)}`,
-              { cache: "no-store" },
-            );
+            const response = await fetch(historyUrl, { cache: "no-store" });
             if (response.status === 401) {
               window.location.assign("/login");
               return;
@@ -748,7 +748,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
             recovered = true;
             break;
           } catch {
-            // The public connection may still be settling; retry the saved session.
+            // The public connection may still be settling; retry saved history.
           }
         }
         if (!recovered) {
