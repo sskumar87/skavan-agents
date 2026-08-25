@@ -25,6 +25,7 @@ that can be continued from both Skavan and Hermes Web.
 | Unified Hermes session identity | Every newly created Skavan chat creates and stores one immutable Hermes session ID; subsequent turns use Hermes' Sessions API and legacy PostgreSQL-only chats remain explicitly labelled. |
 | Cross-client transcript refresh | A unified Skavan chat reads its complete transcript from Hermes, so messages added from Hermes terminal/Web appear after reopening or refreshing the chat; PostgreSQL message rows recover known Skavan author labels. |
 | Cross-client title synchronization | Skavan rename invokes Hermes' native session-title mutation (the same persistence primitive as terminal `/title`), while chat-list refresh mirrors terminal title and activity changes back into product metadata. |
+| Swing-scan response consistency | The Work profile's `swing-fib-scan` repetitive-task list uses one compact fenced-block contract (`TASK`, `PARAMS`, `PROMPT (one-liner)`, `PROMPT`, `BEST FOR`) and the skill forbids alternative layouts. |
 | User identity presentation | Registered names are synchronized into PostgreSQL and the given name is displayed in the authenticated UI. |
 | Theme preference | Four approved themes are available and the selected theme is persisted in the user's PostgreSQL JSONB preferences. |
 | Default profile preference | Users with two profiles can save the profile that opens by default on mobile, tablet and desktop. Single-profile users enter their only authorized profile automatically. |
