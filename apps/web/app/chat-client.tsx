@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, MouseEvent as ReactMouseEvent, ReactNode, useEffect, useRef, useState } from "react";
+import { FormEvent, memo, MouseEvent as ReactMouseEvent, ReactNode, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -142,6 +142,95 @@ function sortMarkdownTable(event: ReactMouseEvent<HTMLButtonElement>) {
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
+
+const MessageItem = memo(function MessageItem({
+  message,
+  isStreaming,
+  activeThreadSource,
+  userName,
+}: {
+  message: ChatMessage;
+  isStreaming: boolean;
+  activeThreadSource?: ThreadSource;
+  userName: string;
+}) {
+  const isAssistant = message.role === "assistant";
+  const renderedContent = isAssistant ? normalizeHermesMarkdown(message.content) : message.content;
+  const hasTable = isAssistant && containsMarkdownTable(renderedContent);
+  const isOwn = !isAssistant && (message.isCurrentUser ?? true);
+  const isTerminalUser = !isAssistant && activeThreadSource === "hermes";
+  const isRightAligned = isOwn || isTerminalUser;
+  const authorName = isAssistant ? "Hermes · Agent" : (message.authorName || (isOwn ? userName : "Group member"));
+
+  return (
+    <article className={`message ${isAssistant ? "assistant" : isRightAligned ? "user" : "participant"} ${hasTable ? "hasTable" : ""}`}>
+      <span className="messageAvatar">{isAssistant ? "H" : authorName.slice(0, 1).toUpperCase()}</span>
+      <div className="messageBody">
+        <div className="messageMeta">{authorName}</div>
+        <div className={`messageContent ${isAssistant ? "markdown" : "plain"}`}>
+          {isAssistant ? (
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                a: ({ children, ...props }) => <a {...props} target="_blank" rel="noreferrer noopener">{children}</a>,
+                th: ({ children, ...props }) => (
+                  <th {...props}>
+                    <button className="markdownSortButton" type="button" onClick={sortMarkdownTable} title="Sort this column">
+                      <span>{children}</span>
+                    </button>
+                  </th>
+                ),
+              }}
+            >{renderedContent}</ReactMarkdown>
+          ) : message.content}
+          {isStreaming && (
+            <span className="streamingIndicator" role="status">
+              <span aria-hidden="true"><i /><i /><i /></span>
+              More response is coming
+            </span>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+});
+
+const ConversationMessages = memo(function ConversationMessages({
+  messages,
+  streamingMessageId,
+  activeThreadSource,
+  userName,
+  isSending,
+  isReceiving,
+}: {
+  messages: ChatMessage[];
+  streamingMessageId: string | null;
+  activeThreadSource?: ThreadSource;
+  userName: string;
+  isSending: boolean;
+  isReceiving: boolean;
+}) {
+  return (
+    <>
+      <div className="dayDivider"><span>Today</span></div>
+      {messages.map((message) => (
+        <MessageItem
+          key={message.id}
+          message={message}
+          isStreaming={streamingMessageId === message.id}
+          activeThreadSource={activeThreadSource}
+          userName={userName}
+        />
+      ))}
+      {isSending && !isReceiving && (
+        <article className="message assistant pending">
+          <span className="messageAvatar">H</span>
+          <div className="messageBody"><div className="messageMeta">Hermes · Agent</div><div className="messageContent plain">Processing<span className="pulse">...</span></div></div>
+        </article>
+      )}
+    </>
+  );
+});
 
 export function ChatClient({ account, userName }: { account: ReactNode; userName: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
@@ -820,53 +909,14 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           </div>
         </header>
         <div className="messages" aria-live="polite" ref={messagesRef} onScroll={updateScrollControls}>
-          <div className="dayDivider"><span>Today</span></div>
-          {messages.map((message) => {
-            const isAssistant = message.role === "assistant";
-            const renderedContent = isAssistant ? normalizeHermesMarkdown(message.content) : message.content;
-            const hasTable = isAssistant && containsMarkdownTable(renderedContent);
-            const isOwn = !isAssistant && (message.isCurrentUser ?? true);
-            const isTerminalUser = !isAssistant && activeThreadSource === "hermes";
-            const isRightAligned = isOwn || isTerminalUser;
-            const authorName = isAssistant ? "Hermes · Agent" : (message.authorName || (isOwn ? userName : "Group member"));
-            return (
-              <article className={`message ${isAssistant ? "assistant" : isRightAligned ? "user" : "participant"} ${hasTable ? "hasTable" : ""}`} key={message.id}>
-                <span className="messageAvatar">{isAssistant ? "H" : authorName.slice(0, 1).toUpperCase()}</span>
-                <div className="messageBody">
-                  <div className="messageMeta">{authorName}</div>
-                  <div className={`messageContent ${isAssistant ? "markdown" : "plain"}`}>
-                    {isAssistant ? (
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          a: ({ children, ...props }) => <a {...props} target="_blank" rel="noreferrer noopener">{children}</a>,
-                          th: ({ children, ...props }) => (
-                            <th {...props}>
-                              <button className="markdownSortButton" type="button" onClick={sortMarkdownTable} title="Sort this column">
-                                <span>{children}</span>
-                              </button>
-                            </th>
-                          ),
-                        }}
-                      >{renderedContent}</ReactMarkdown>
-                    ) : message.content}
-                    {streamingMessageId === message.id && (
-                      <span className="streamingIndicator" role="status">
-                        <span aria-hidden="true"><i /><i /><i /></span>
-                        More response is coming
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-          {isSending && !isReceiving && (
-            <article className="message assistant pending">
-              <span className="messageAvatar">H</span>
-              <div className="messageBody"><div className="messageMeta">Hermes · Agent</div><div className="messageContent plain">Processing<span className="pulse">...</span></div></div>
-            </article>
-          )}
+          <ConversationMessages
+            messages={messages}
+            streamingMessageId={streamingMessageId}
+            activeThreadSource={activeThreadSource}
+            userName={userName}
+            isSending={isSending}
+            isReceiving={isReceiving}
+          />
         </div>
         <div className="scrollControls" aria-label="Conversation scroll controls">
           {canScrollUp && <button type="button" onClick={() => scrollMessages("top")} aria-label="Scroll to first message">↑</button>}
