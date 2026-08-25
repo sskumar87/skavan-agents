@@ -123,6 +123,8 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .messageContent.markdown code { padding: .15em .35em; border: 1px solid var(--color-border); border-radius: 4px; background: var(--color-input); font: .9em ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
 .messageContent.markdown pre { max-width: 100%; margin: .85em 0; padding: 12px; overflow-x: auto; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-input); -webkit-overflow-scrolling: touch; }
 .messageContent.markdown pre code { padding: 0; border: 0; background: transparent; white-space: pre; overflow-wrap: normal; }
+.messageContent.markdown pre:has(> code:not([class*="language-"])) { overflow-x: hidden; }
+.messageContent.markdown pre > code:not([class*="language-"]) { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
 .messageContent.markdown table { width: 100%; max-height: min(52dvh, 520px); margin: .85em 0; display: block; overflow: auto; border-collapse: collapse; white-space: nowrap; scrollbar-gutter: stable; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .message.assistant.hasTable .messageContent.markdown table { width: max-content; max-width: 100%; }
 .messageContent.markdown th,.messageContent.markdown td { border: 1px solid var(--color-border); text-align: left; }
