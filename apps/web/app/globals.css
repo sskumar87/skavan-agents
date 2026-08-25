@@ -123,11 +123,11 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .messageContent.markdown code { padding: .15em .35em; border: 1px solid var(--color-border); border-radius: 4px; background: var(--color-input); font: .9em ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
 .messageContent.markdown pre { max-width: 100%; margin: .85em 0; padding: 12px; overflow-x: auto; border: 1px solid var(--color-border); border-radius: 7px; background: var(--color-input); -webkit-overflow-scrolling: touch; }
 .messageContent.markdown pre code { padding: 0; border: 0; background: transparent; white-space: pre; overflow-wrap: normal; }
-.messageContent.markdown table { width: 100%; margin: .85em 0; display: block; overflow-x: auto; border-collapse: collapse; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+.messageContent.markdown table { width: 100%; max-height: min(52dvh, 520px); margin: .85em 0; display: block; overflow: auto; border-collapse: collapse; white-space: nowrap; scrollbar-gutter: stable; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .message.assistant.hasTable .messageContent.markdown table { width: max-content; max-width: 100%; }
 .messageContent.markdown th,.messageContent.markdown td { border: 1px solid var(--color-border); text-align: left; }
 .messageContent.markdown td { padding: 8px 10px; }
-.messageContent.markdown th { background: var(--color-input); color: var(--color-text); }
+.messageContent.markdown th { position: sticky; top: 0; z-index: 1; background: var(--color-input); color: var(--color-text); box-shadow: 0 1px 0 var(--color-border); }
 .markdownSortButton { width: 100%; min-height: 38px; padding: 8px 28px 8px 10px; position: relative; display: flex; align-items: center; border: 0; background: transparent; color: inherit; font-weight: 750; text-align: left; white-space: nowrap; }
 .markdownSortButton::after { content: "↕"; position: absolute; right: 9px; color: var(--color-muted); font-size: 11px; }
 th[aria-sort="ascending"] .markdownSortButton::after { content: "↑"; color: var(--color-accent); }
@@ -204,6 +204,7 @@ textarea::placeholder { color: var(--color-muted); }
   .backButton,.themeMenuButton { width: 34px; min-width: 34px; height: 34px; }.contextMenuButton { display: none; }.workspaceSearch { min-width: 0; border: 0; background: transparent; }.workspaceSearch span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.workspaceSearch kbd { display: none; }.desktopAccount .accountName { display: none; }.desktopAccount .logoutButton { min-height: 34px; padding: 0 8px; }
   .themeMenu { top: 52px; right: 8px; }.conversationPane { grid-row: 2; grid-column: 1; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; }.conversationHeader { min-height: 64px; padding: 10px 14px; }
   .messages { padding: 16px 12px; }.message { width: fit-content; max-width: 100%; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; }.message.user { grid-template-columns: minmax(0, 1fr) 34px; }.messageAvatar { width: 32px; height: 32px; font-size: 15px; }.messageContent { padding: 12px; font-size: 13px; }
+  .messageContent.markdown table { max-height: min(42dvh, 360px); }
   .messageContent.markdown td { padding: 7px 8px; }.markdownSortButton { min-height: 36px; padding: 7px 26px 7px 8px; }
   .composerArea { position: relative; z-index: 3; margin: 0 8px 8px; }.composer { grid-template-columns: 32px minmax(0, 1fr) auto; }.composerIcon { width: 32px; height: 38px; }.composer button { min-width: 62px; padding: 0 10px; }.hint { display: none; }
   .scrollControls { right: 14px; bottom: 82px; }
