@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.hermes import (
     HermesAdapter,
     HermesError,
+    HermesStreamEvent,
     TASK_TEMPLATE_INSTRUCTIONS,
     task_template_instructions,
 )
@@ -91,6 +92,64 @@ def test_session_stream_sends_template_instruction_invisibly(monkeypatch) -> Non
         "message": "What repetitive tasks can I perform?",
         "instructions": TASK_TEMPLATE_INSTRUCTIONS,
     }
+
+
+def test_session_stream_preserves_safe_tool_progress_events(monkeypatch) -> None:
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+        async def aiter_lines(self):
+            yield "event: run.started"
+            yield 'data: {"run_id":"run-1"}'
+            yield ""
+            yield "event: tool.started"
+            yield 'data: {"tool_name":"db_query","preview":"Reading rows","args":{"secret":"hidden"}}'
+            yield ""
+            yield "event: tool.completed"
+            yield 'data: {"tool_name":"db_query","preview":"12 rows"}'
+            yield ""
+            yield "event: assistant.delta"
+            yield 'data: {"delta":"Done"}'
+            yield ""
+
+    class FakeStreamContext:
+        async def __aenter__(self):
+            return FakeResponse()
+
+        async def __aexit__(self, *_args):
+            return False
+
+    class FakeAsyncClient:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return False
+
+        def stream(self, *_args, **_kwargs):
+            return FakeStreamContext()
+
+    monkeypatch.setattr(hermes_module.httpx2, "AsyncClient", FakeAsyncClient)
+    adapter = HermesAdapter(base_url="http://hermes:8642", api_key="a" * 32)
+
+    async def collect():
+        return [item async for item in adapter.stream_session(
+            "session-1", "Inspect", session_key="scope", profile="personal",
+        )]
+
+    events = asyncio.run(collect())
+    assert events[0] == HermesStreamEvent(
+        "status", {"state": "running", "message": "Hermes is working…"},
+    )
+    assert events[1] == HermesStreamEvent(
+        "tool", {"state": "started", "tool_name": "db_query", "preview": "Reading rows"},
+    )
+    assert "secret" not in str(events)
+    assert events[-1] == "Done"
 
 
 def test_hermes_session_messages_loads_every_page(monkeypatch) -> None:

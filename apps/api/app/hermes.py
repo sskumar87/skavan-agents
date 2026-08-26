@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from dataclasses import dataclass
@@ -37,6 +38,16 @@ def task_template_instructions(message: str) -> str | None:
 
 class HermesError(RuntimeError):
     """A user-safe Hermes integration failure."""
+
+
+class HermesBusyError(HermesError):
+    """Hermes reached its configured global concurrent-run limit."""
+
+
+@dataclass(frozen=True)
+class HermesStreamEvent:
+    event: str
+    data: dict[str, object]
 
 
 @dataclass(frozen=True)
@@ -296,7 +307,8 @@ class HermesAdapter:
         *,
         session_key: str,
         profile: str,
-    ) -> AsyncIterator[str]:
+        _retry_count: int = 0,
+    ) -> AsyncIterator[str | HermesStreamEvent]:
         encoded_id = quote(session_id, safe="")
         instruction = task_template_instructions(message)
         payload = {"message": message}
@@ -326,7 +338,24 @@ class HermesAdapter:
                         if event_name == "error":
                             detail = payload.get("message") if isinstance(payload, dict) else None
                             raise HermesError(detail if isinstance(detail, str) else "Hermes session failed.")
+                        if event_name in {"tool.progress", "tool.started", "tool.completed", "tool.failed"} and isinstance(payload, dict):
+                            state = event_name.split(".", maxsplit=1)[1]
+                            yield HermesStreamEvent("tool", {
+                                "state": state,
+                                "tool_name": str(payload.get("tool_name") or "tool"),
+                                "preview": str(payload.get("preview") or payload.get("delta") or "")[:240],
+                            })
+                            continue
+                        if event_name == "run.started":
+                            yield HermesStreamEvent("status", {
+                                "state": "running", "message": "Hermes is working…",
+                            })
+                            continue
                         if event_name == "assistant.completed" and not received_content and isinstance(payload, dict):
+                            if payload.get("interrupted"):
+                                yield HermesStreamEvent("interruption", {
+                                    "message": "Hermes was interrupted before completing this response.",
+                                })
                             content = payload.get("content")
                             if isinstance(content, str) and content:
                                 received_content = True
@@ -345,6 +374,18 @@ class HermesAdapter:
         except httpx2.HTTPStatusError as exc:
             if exc.response.status_code == 404:
                 raise HermesError("Hermes session was not found.") from exc
+            if exc.response.status_code == 429:
+                if _retry_count < 2:
+                    await asyncio.sleep(2 ** _retry_count)
+                    async for item in self.stream_session(
+                        session_id, message, session_key=session_key,
+                        profile=profile, _retry_count=_retry_count + 1,
+                    ):
+                        yield item
+                    return
+                raise HermesBusyError(
+                    "Hermes is at its global run limit. Please retry shortly."
+                ) from exc
             raise HermesError("Hermes rejected the session request.") from exc
         except HermesError:
             raise

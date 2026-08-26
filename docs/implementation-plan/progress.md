@@ -1,6 +1,6 @@
 # Delivery progress
 
-Last updated: 2026-08-25
+Last updated: 2026-08-26
 
 This is the project execution ledger. A component is marked complete only after
 it has been implemented and verified. Material architecture changes require an
@@ -42,47 +42,44 @@ that can be continued from both Skavan and Hermes Web.
 | Mobile plain-text block wrapping | Markdown fences labelled `text`, `plaintext` or `txt` wrap within the message viewport on mobile and desktop; programming-language code fences retain horizontal scrolling and tables keep their independent responsive scroller. |
 | Mobile stream recovery for all chats | If a mobile browser drops a long SSE response, both platform-controlled and directly listed Hermes chats poll their authoritative saved history and replace the partial response automatically instead of leaving a raw `Load failed` error. |
 | Unified-chat list deduplication | Platform chats expose their existing Hermes session binding to the web client. The merged chat list suppresses the corresponding native-session row by stable session ID while retaining genuinely separate conversations that merely share a title. |
+| Profile authorization acceptance suite | Release-blocking coverage verifies Personal-only, Work-only, both profiles, revoked defaults, all roles revoked, wrong-profile denial and two-user shared profile chat visibility. |
+| Live cross-client transcript refresh | Open Skavan chats poll their canonical Hermes transcript every five seconds while visible and refresh immediately when the browser tab regains focus. Identical transcripts do not trigger a React update. |
+| Platform session writer guard | The single FastAPI instance serializes Skavan turns per profile/session, allows one bounded pending turn, reports queued state and applies bounded Hermes 429 backoff. The direct Hermes terminal boundary is recorded in ADR-016. |
+| Hermes runtime event UX | Safe tool start/completion/failure and interruption events are normalized by the backend without exposing tool arguments; the UI displays current progress during long runs. |
 
 ## P0 — next implementation work
 
 | Task | Definition of done |
 | --- | --- |
-| Live cross-client refresh | Add bounded polling or a supported session-event mechanism so terminal/Web messages appear while a Skavan chat remains open, without requiring manual refresh. |
-| Per-session writer protection | Serialize turns for the same Hermes session, provide busy/queued UX, handle Hermes 429 responses and prevent simultaneous Skavan/Hermes writers from duplicating work. |
-| Tool and interruption events | Preserve and render safe Hermes tool-progress, completion and interruption events instead of exposing only text tokens. |
-| Profile acceptance suite | Verify Personal-only, Work-only, both profiles, saved default, revoked default, all roles revoked, two-user shared chat visibility and wrong-profile denial. These tests are release-blocking. |
+| Direct-client writer coordination | Add or adopt a Hermes-native per-session lease (or require a shared writer wrapper) so direct terminal/Web turns and Skavan turns participate in the same mechanical lock. Skavan-side serialization is complete. |
 
 ## P1 — release and operational follow-up
 
 | Task | Next action |
 | --- | --- |
-| Push current branch | Local verified commits are pending on `feature/minimal-hermes-chat`. Push them and run the clean-machine CI workflow. |
 | ZITADEL proxy health | Diagnose why `zitadel-proxy` reports unhealthy while ZITADEL API/login and public authentication remain functional; correct the health check or underlying routing issue. |
 | Profile backup/restore | Back up and independently restore the default Personal and named Work Hermes data directories, including their `state.db`, `USER.md` and `MEMORY.md`. |
 | Shared-memory acceptance | Prove Personal and Work memory isolation and same-profile sharing using explicit test facts. |
 | Off-host recovery | Select encrypted off-host backup storage, key custody, retention, alerts and recovery objectives; perform a documented restore rehearsal. |
 | Deployment documentation | Update the clean-machine runbook with the pinned Docker executable discovery, current Compose command, profile bootstrap and post-deployment acceptance checks. |
 
-## P2 — later product capabilities
+## P3 — non-blocking extensions
 
 | Task | Guardrail |
 | --- | --- |
-| Safe `/commands` support | Define an allowlist and permission model. Do not expose unrestricted terminal, filesystem, configuration or administrator commands to normal users. |
-| Optional OmniRoute provider | Evaluate provider compatibility, model routing, cost, failover and secret handling before adding it to Hermes profiles. |
-| Mechanical action ledger | If required, add a reviewed hook for tool/action records. Observer hooks are best-effort and do not replace authorization or the per-session writer guard. |
-| Messaging channels | Add Telegram and then WhatsApp only after the web/session identity model is stable; link channel identities to canonical product users. |
-| Mobile and voice | React Native and voice remain deferred and must reuse the same backend/profile/session authorization model. |
+| Legacy chat importer | Keep migration explicit, idempotent and reversible; never migrate during a normal chat read. |
+| Safe `/commands` support | Start with read-only help, session list/status/title and profile information. Keep terminal, filesystem, credentials, config mutation, cron and administration unavailable to normal users. |
+| Optional OmniRoute provider | Evaluate provider compatibility, routing, cost, failover and secret handling behind the Hermes adapter. |
+| Mechanical action ledger | A reviewed best-effort observer hook may record tools, but it does not replace authorization or turn coordination. |
+| Messaging channels | Add Telegram and WhatsApp only after web/session identity is stable. |
+| Mobile and voice | Reuse the same backend, profile authorization and session coordinator contracts. |
 
 ## Decisions required
 
-1. Whether Hermes `state.db` becomes the canonical transcript for unified chats
-   or PostgreSQL remains authoritative with a rigorously defined mirror.
-2. Whether existing PostgreSQL-only chats are migrated or retained as legacy
-   conversations.
-3. The per-session lock location and queue behavior shared by Skavan and direct
-   Hermes clients.
-4. The safe user-facing Hermes command allowlist.
-5. Encrypted off-host backup destination, recovery-key custody and RPO/RTO.
+1. Upstream/shared-wrapper mechanism for direct Hermes clients to participate
+   in the ADR-016 per-session lease.
+2. Encrypted off-host backup destination and recovery-key custodian. Initial
+   targets are RPO 24 hours, RTO 4 hours, 30-day retention and quarterly restore tests.
 
 ## Known non-goals for Phase 1
 
@@ -97,5 +94,5 @@ that can be continued from both Skavan and Hermes Web.
 When implementation or testing reveals unplanned product, security, deployment
 or reliability work, add it to this ledger in the same development session.
 Record completed/deployed behavior under **Completed and deployed** and unfinished
-work under the appropriate P0/P1/P2 section. Chat history is not the project
+work under the appropriate P0/P1/P3 section. Chat history is not the project
 task system.

@@ -85,6 +85,13 @@ function mapStoredMessages(history: StoredChatMessage[]): ChatMessage[] {
   }));
 }
 
+function transcriptSignature(messages: ChatMessage[]): string {
+  return messages.map((message) => [
+    message.id, message.role, message.content,
+    message.isCurrentUser ? "1" : "0", message.authorName ?? "",
+  ].join("\u001f")).join("\u001e");
+}
+
 function normalizeHermesMarkdown(content: string): string {
   const lines = content.split("\n");
   for (let index = 0; index < lines.length - 1; index += 1) {
@@ -252,6 +259,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
   const [isSending, setIsSending] = useState(false);
   const [isReceiving, setIsReceiving] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [turnStatus, setTurnStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hermesStatus, setHermesStatus] = useState<"checking" | "online" | "offline">("checking");
   const [theme, setTheme] = useState<ThemeName>("neon-grid");
@@ -272,6 +280,16 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
   const searchInputRef = useRef<HTMLInputElement>(null);
   const drawerSearchInputRef = useRef<HTMLInputElement>(null);
   const followBottomRef = useRef(true);
+  const isSendingRef = useRef(false);
+  const transcriptSignatureRef = useRef(transcriptSignature(initialMessages));
+
+  useEffect(() => {
+    isSendingRef.current = isSending;
+  }, [isSending]);
+
+  useEffect(() => {
+    transcriptSignatureRef.current = transcriptSignature(messages);
+  }, [messages]);
 
   useEffect(() => {
     fetch("/bff/hermes/health")
@@ -528,8 +546,47 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
       .finally(() => setIsLoadingHistory(false));
   }, [selectedProfile, selectedThreadId, threads]);
 
+  useEffect(() => {
+    if (!selectedThreadId || !selectedProfile) return;
+    const selectedThread = threads.find((thread) => thread.id === selectedThreadId);
+    if (!selectedThread) return;
+    const historyUrl = selectedThread.source === "hermes"
+      ? `/bff/hermes/sessions/${encodeURIComponent(selectedThread.nativeId)}/messages?profile=${encodeURIComponent(selectedProfile)}`
+      : `/bff/chat/history?profile=${encodeURIComponent(selectedProfile)}&thread_id=${encodeURIComponent(selectedThread.nativeId)}`;
+    let stopped = false;
+
+    async function refreshTranscript() {
+      if (stopped || document.visibilityState !== "visible" || isSendingRef.current) return;
+      try {
+        const response = await fetch(historyUrl, { cache: "no-store" });
+        if (!response.ok || stopped) return;
+        const history = mapStoredMessages(await response.json() as StoredChatMessage[]);
+        if (!history.length) return;
+        const signature = transcriptSignature(history);
+        if (signature === transcriptSignatureRef.current) return;
+        transcriptSignatureRef.current = signature;
+        setMessages(history);
+      } catch {
+        // A background refresh is best-effort; foreground loading and sending
+        // continue to surface actionable errors to the user.
+      }
+    }
+
+    const interval = window.setInterval(refreshTranscript, 5000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void refreshTranscript();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      stopped = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [selectedProfile, selectedThreadId, threads]);
+
   async function createThread() {
     setError(null);
+    setTurnStatus(null);
     try {
       if (!selectedProfile) throw new Error("Choose a profile first");
       const response = await fetch("/bff/chat/threads", {
@@ -639,6 +696,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
 
     setPrompt("");
     setError(null);
+    setTurnStatus(null);
     setIsSending(true);
     setIsReceiving(false);
     setStreamingMessageId(null);
@@ -691,7 +749,26 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
         if (item.event === "error") {
           throw new Error(typeof item.data.message === "string" ? item.data.message : "Hermes stream failed.");
         }
+        if (item.event === "status") {
+          setTurnStatus(typeof item.data.message === "string" ? item.data.message : "Waiting for this chat…");
+          return;
+        }
+        if (item.event === "tool") {
+          const toolName = typeof item.data.tool_name === "string" ? item.data.tool_name : "tool";
+          const state = typeof item.data.state === "string" ? item.data.state : "running";
+          setTurnStatus(state === "completed"
+            ? `${toolName} completed. Hermes is continuing…`
+            : state === "failed"
+              ? `${toolName} failed. Hermes is recovering…`
+              : `Hermes is using ${toolName}…`);
+          return;
+        }
+        if (item.event === "interruption") {
+          setError(typeof item.data.message === "string" ? item.data.message : "Hermes was interrupted.");
+          return;
+        }
         if (item.event !== "token" || typeof item.data.content !== "string") return;
+        setTurnStatus(null);
         const token = item.data.content;
         if (!assistantAdded) {
           assistantAdded = true;
@@ -765,6 +842,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
       setIsSending(false);
       setIsReceiving(false);
       setStreamingMessageId(null);
+      setTurnStatus(null);
     }
   }
 
@@ -941,6 +1019,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           {canScrollDown && <button type="button" onClick={() => scrollMessages("bottom")} aria-label="Scroll to latest message">↓</button>}
         </div>
         <div className="composerArea">
+          {turnStatus && <p className="profilePreferenceStatus" role="status">{turnStatus}</p>}
           {error && <p className="error" role="alert">{error}</p>}
           {!selectedProfile && error?.startsWith("No Personal or Work role") && (
             <a className="refreshAccess" href="/refresh-access">Refresh profile access</a>

@@ -25,7 +25,13 @@ from app.conversations import (
     require_profile_thread,
 )
 from app.database import get_database_session, get_session_factory
-from app.hermes import HermesAdapter, HermesError
+from app.hermes import HermesAdapter, HermesError, HermesStreamEvent
+from app.coordination import (
+    InProcessSessionTurnCoordinator,
+    SessionBusyError,
+    SessionQueueTimeoutError,
+    session_turn_coordinator,
+)
 from app.identity import (
     OidcTokenVerifier,
     ZitadelProvisioningError,
@@ -43,8 +49,8 @@ app = FastAPI(title="Skavan Agents API", version="0.1.0")
 
 
 async def stream_with_heartbeat(
-    source: AsyncIterator[str], interval_seconds: float = 15.0,
-) -> AsyncIterator[str | None]:
+    source: AsyncIterator[str | HermesStreamEvent], interval_seconds: float = 15.0,
+) -> AsyncIterator[str | HermesStreamEvent | None]:
     """Keep public SSE connections active while Hermes is running tools."""
     iterator = source.__aiter__()
     pending = asyncio.create_task(anext(iterator))
@@ -269,6 +275,10 @@ async def require_profile_access(
 
 def get_hermes_adapter() -> HermesAdapter:
     return HermesAdapter.from_environment()
+
+
+def get_session_turn_coordinator() -> InProcessSessionTurnCoordinator:
+    return session_turn_coordinator
 
 
 @app.get("/api/chat/profiles", response_model=list[ChatProfile], tags=["chat"])
@@ -549,6 +559,7 @@ async def stream_hermes_session_chat(
     request: HermesSessionChatRequest,
     x_skavan_user_id: str | None = Header(default=None),
     hermes: HermesAdapter = Depends(get_hermes_adapter),
+    coordinator: InProcessSessionTurnCoordinator = Depends(get_session_turn_coordinator),
 ) -> StreamingResponse:
     user_id = require_platform_user_id(x_skavan_user_id)
     async with get_session_factory()() as session:
@@ -556,16 +567,28 @@ async def stream_hermes_session_chat(
 
     async def events() -> AsyncIterator[str]:
         try:
-            source = hermes.stream_session(
-                session_id, request.message,
-                session_key=f"skavan:profile:{request.profile}", profile=request.profile,
-            )
-            async for content in stream_with_heartbeat(source):
-                if content is None:
-                    yield ": keep-alive\n\n"
-                    continue
-                yield format_sse("token", {"content": content})
-            yield format_sse("done", {})
+            coordination_key = f"{request.profile}:{session_id}"
+            if await coordinator.is_busy(coordination_key):
+                yield format_sse("status", {
+                    "state": "queued",
+                    "message": "Another response is in progress. Your message is queued.",
+                })
+            async with coordinator.turn(coordination_key):
+                source = hermes.stream_session(
+                    session_id, request.message,
+                    session_key=f"skavan:profile:{request.profile}", profile=request.profile,
+                )
+                async for content in stream_with_heartbeat(source):
+                    if content is None:
+                        yield ": keep-alive\n\n"
+                        continue
+                    if isinstance(content, HermesStreamEvent):
+                        yield format_sse(content.event, content.data)
+                        continue
+                    yield format_sse("token", {"content": content})
+                yield format_sse("done", {})
+        except (SessionBusyError, SessionQueueTimeoutError) as exc:
+            yield format_sse("error", {"message": str(exc), "retryable": True})
         except HermesError as exc:
             yield format_sse("error", {"message": str(exc)})
 
@@ -596,7 +619,7 @@ async def chat(
     return ChatResponse(message=ChatMessage(role="assistant", content=content))
 
 
-def format_sse(event: str, data: dict[str, str]) -> str:
+def format_sse(event: str, data: dict[str, object]) -> str:
     return f"event: {event}\ndata: {json.dumps(data, separators=(',', ':'))}\n\n"
 
 
@@ -605,6 +628,7 @@ async def stream_chat(
     request: ChatRequest,
     x_skavan_user_id: str | None = Header(default=None),
     hermes: HermesAdapter = Depends(get_hermes_adapter),
+    coordinator: InProcessSessionTurnCoordinator = Depends(get_session_turn_coordinator),
 ) -> StreamingResponse:
     user_id = require_platform_user_id(x_skavan_user_id)
     latest = request.messages[-1]
@@ -620,34 +644,50 @@ async def stream_chat(
             )
         except ValueError as exc:
             raise HTTPException(status_code=404, detail="Thread not found") from exc
-        await append_message(
-            session, thread_id=thread_id, author_kind="USER",
-            author_user_id=user_id, content=latest.content,
-        )
-        stored = [] if hermes_session_id else await load_messages(session, thread_id, limit=50)
-    hermes_messages = [{"role": item["role"], "content": item["content"]} for item in stored]
-
     async def events() -> AsyncIterator[str]:
         assistant_content: list[str] = []
         try:
-            if hermes_session_id:
-                source = hermes.stream_session(
-                    hermes_session_id, latest.content,
-                    session_key=f"skavan:profile:{request.profile}",
-                    profile=request.profile,
-                )
-            else:
-                source = hermes.stream(
-                    hermes_messages,
-                    session_key=f"skavan:profile:{request.profile}",
-                    profile=request.profile,
-                )
-            async for content in stream_with_heartbeat(source):
-                if content is None:
-                    yield ": keep-alive\n\n"
-                    continue
-                assistant_content.append(content)
-                yield format_sse("token", {"content": content})
+            runtime_session_id = hermes_session_id or f"legacy-{thread_id}"
+            coordination_key = f"{request.profile}:{runtime_session_id}"
+            if await coordinator.is_busy(coordination_key):
+                yield format_sse("status", {
+                    "state": "queued",
+                    "message": "Another response is in progress. Your message is queued.",
+                })
+            async with coordinator.turn(coordination_key):
+                async with get_session_factory()() as session:
+                    await append_message(
+                        session, thread_id=thread_id, author_kind="USER",
+                        author_user_id=user_id, content=latest.content,
+                    )
+                    stored = [] if hermes_session_id else await load_messages(
+                        session, thread_id, limit=50,
+                    )
+                hermes_messages = [
+                    {"role": item["role"], "content": item["content"]}
+                    for item in stored
+                ]
+                if hermes_session_id:
+                    source = hermes.stream_session(
+                        hermes_session_id, latest.content,
+                        session_key=f"skavan:profile:{request.profile}",
+                        profile=request.profile,
+                    )
+                else:
+                    source = hermes.stream(
+                        hermes_messages,
+                        session_key=f"skavan:profile:{request.profile}",
+                        profile=request.profile,
+                    )
+                async for content in stream_with_heartbeat(source):
+                    if content is None:
+                        yield ": keep-alive\n\n"
+                        continue
+                    if isinstance(content, HermesStreamEvent):
+                        yield format_sse(content.event, content.data)
+                        continue
+                    assistant_content.append(content)
+                    yield format_sse("token", {"content": content})
             if assistant_content:
                 async with get_session_factory()() as session:
                     await append_message(
@@ -655,6 +695,8 @@ async def stream_chat(
                         content="".join(assistant_content),
                     )
             yield format_sse("done", {})
+        except (SessionBusyError, SessionQueueTimeoutError) as exc:
+            yield format_sse("error", {"message": str(exc), "retryable": True})
         except HermesError as exc:
             yield format_sse("error", {"message": str(exc)})
 
