@@ -47,11 +47,10 @@ that can be continued from both Skavan and Hermes Web.
 | Platform session writer guard | The single FastAPI instance serializes Skavan turns per profile/session, allows one bounded pending turn, reports queued state and applies bounded Hermes 429 backoff. The direct Hermes terminal boundary is recorded in ADR-016. |
 | Hermes runtime event UX | Safe tool start/completion/failure and interruption events are normalized by the backend without exposing tool arguments; the UI displays current progress during long runs. |
 
-## P0 — next implementation work
+## P0 — complete for the current deployment
 
-| Task | Definition of done |
-| --- | --- |
-| Direct-client writer coordination | Add or adopt a Hermes-native per-session lease (or require a shared writer wrapper) so direct terminal/Web turns and Skavan turns participate in the same mechanical lock. Skavan-side serialization is complete. |
+The release-blocking web-platform controls are deployed. Cross-client writer
+coordination outside Skavan is explicitly parked as a non-blocking extension.
 
 ## P1 — release and operational follow-up
 
@@ -68,6 +67,7 @@ that can be continued from both Skavan and Hermes Web.
 | Task | Guardrail |
 | --- | --- |
 | Legacy chat importer | Keep migration explicit, idempotent and reversible; never migrate during a normal chat read. |
+| Direct Hermes client writer coordination | Add or adopt a Hermes-native per-session lease, or require a shared writer wrapper, if simultaneous terminal/Web and Skavan writing becomes a supported workflow. |
 | Safe `/commands` support | Start with read-only help, session list/status/title and profile information. Keep terminal, filesystem, credentials, config mutation, cron and administration unavailable to normal users. |
 | Optional OmniRoute provider | Evaluate provider compatibility, routing, cost, failover and secret handling behind the Hermes adapter. |
 | Mechanical action ledger | A reviewed best-effort observer hook may record tools, but it does not replace authorization or turn coordination. |
