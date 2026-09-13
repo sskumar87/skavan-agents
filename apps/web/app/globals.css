@@ -107,7 +107,9 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .message.assistant.hasTable { width: fit-content; max-width: calc(100% - 52px); }
 .message.assistant.hasTable .messageBody,.message.assistant.hasTable .messageContent { width: fit-content; max-width: 100%; }
 .messageAvatar { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid var(--color-accent-border); border-radius: 50%; background: var(--color-accent-soft); color: var(--color-accent); font: 18px Georgia, serif; }
-.messageBody { min-width: 0; }.messageMeta { margin: 2px 0 8px; color: var(--color-accent); font: 11px ui-monospace, monospace; }
+.messageBody { min-width: 0; }.messageMeta { margin: 2px 0 8px; display: flex; align-items: baseline; gap: 8px; color: var(--color-accent); font: 11px ui-monospace, monospace; }
+.messageMeta time { color: var(--color-muted); font-size: 9px; white-space: nowrap; }
+.message.user .messageMeta { justify-content: flex-end; }
 .messageContent { min-width: 0; padding: 14px 16px; border: 1px solid var(--color-border); border-radius: 9px; background: var(--color-surface-raised); line-height: 1.55; overflow-wrap: anywhere; }
 .messageContent.plain { white-space: pre-wrap; }
 .message.assistant .messageContent { border-color: var(--color-accent-border); background: linear-gradient(135deg,var(--color-surface-raised),var(--color-accent-soft)); }
@@ -127,8 +129,19 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .messageContent.markdown pre > code:not([class*="language-"]) { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
 .messageContent.markdown pre:has(> code:is(.language-text,.language-plaintext,.language-txt)) { overflow-x: hidden; }
 .messageContent.markdown pre > code:is(.language-text,.language-plaintext,.language-txt) { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
-.messageContent.markdown table { width: 100%; max-height: min(52dvh, 520px); margin: .85em 0; display: block; overflow: auto; border-collapse: collapse; white-space: nowrap; scrollbar-gutter: stable; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+.markdownTableFrame { width: max-content; max-width: 100%; margin: .85em 0; }
+.markdownTableToolbar { min-height: 42px; padding: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border: 1px solid var(--color-border); border-bottom: 0; border-radius: 7px 7px 0 0; background: var(--color-input); }
+.markdownTableFilterColumn,.markdownTableFilterOperator,.markdownTableFilterInput,.markdownTableFilterSecondary { min-width: 0; min-height: 30px; padding: 5px 9px; border: 1px solid var(--color-border); border-radius: 5px; outline: none; background: var(--color-surface); color: var(--color-text); }
+.markdownTableFilterColumn { width: clamp(120px, 18vw, 210px); }.markdownTableFilterOperator { width: 92px; }.markdownTableFilterInput,.markdownTableFilterSecondary { width: clamp(90px, 13vw, 160px); }
+.markdownTableFilterSecondary { display: none; }.markdownTableFrame.filterBetween .markdownTableFilterSecondary { display: block; }
+.markdownTableFilterColumn:focus,.markdownTableFilterOperator:focus,.markdownTableFilterInput:focus,.markdownTableFilterSecondary:focus { border-color: var(--color-accent); box-shadow: 0 0 0 2px var(--color-accent-soft); }
+.markdownTableFilterInput::placeholder { color: var(--color-muted); }
+.markdownTableFilterResult { margin-left: auto; color: var(--color-muted); font: 10px ui-monospace, monospace; white-space: nowrap; }
+.markdownTableFilterClear { min-height: 30px; padding: 4px 9px; border: 1px solid var(--color-border); border-radius: 5px; background: transparent; color: var(--color-muted); }
+.markdownTableFilterClear:hover,.markdownTableFilterClear:focus-visible { border-color: var(--color-accent); color: var(--color-accent); }
+.messageContent.markdown table { width: 100%; max-height: min(52dvh, 520px); margin: 0; display: block; overflow: auto; border-collapse: collapse; white-space: nowrap; scrollbar-gutter: stable; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .message.assistant.hasTable .messageContent.markdown table { width: max-content; max-width: 100%; }
+.messageContent.markdown tbody tr[hidden] { display: none; }
 .messageContent.markdown th,.messageContent.markdown td { border: 1px solid var(--color-border); text-align: left; }
 .messageContent.markdown td { padding: 8px 10px; }
 .messageContent.markdown th { position: sticky; top: 0; z-index: 1; background: var(--color-input); color: var(--color-text); box-shadow: 0 1px 0 var(--color-border); }

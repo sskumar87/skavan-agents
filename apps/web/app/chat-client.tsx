@@ -10,10 +10,12 @@ type ChatMessage = {
   content: string;
   isCurrentUser?: boolean;
   authorName?: string | null;
+  createdAt?: string | null;
 };
-type StoredChatMessage = Omit<ChatMessage, "isCurrentUser" | "authorName"> & {
+type StoredChatMessage = Omit<ChatMessage, "isCurrentUser" | "authorName" | "createdAt"> & {
   is_current_user: boolean;
   author_name?: string | null;
+  created_at?: string | null;
 };
 type StreamEvent = { event: string; data: Record<string, unknown> };
 type ThreadSource = "skavan" | "hermes";
@@ -82,13 +84,24 @@ function mapStoredMessages(history: StoredChatMessage[]): ChatMessage[] {
     content: message.content,
     isCurrentUser: message.is_current_user,
     authorName: message.author_name,
+    createdAt: message.created_at,
   }));
+}
+
+function localMessageTimestamp(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(parsed);
 }
 
 function transcriptSignature(messages: ChatMessage[]): string {
   return messages.map((message) => [
     message.id, message.role, message.content,
-    message.isCurrentUser ? "1" : "0", message.authorName ?? "",
+    message.isCurrentUser ? "1" : "0", message.authorName ?? "", message.createdAt ?? "",
   ].join("\u001f")).join("\u001e");
 }
 
@@ -153,6 +166,109 @@ function sortMarkdownTable(event: ReactMouseEvent<HTMLButtonElement>) {
   header.setAttribute("aria-sort", direction);
 }
 
+function populateMarkdownTableColumns(select: HTMLSelectElement) {
+  if (select.dataset.ready === "true") return;
+  const headers = select.closest(".markdownTableFrame")?.querySelectorAll("thead th");
+  if (!headers?.length) return;
+  headers.forEach((header, index) => {
+    const option = document.createElement("option");
+    option.value = String(index);
+    option.textContent = (header.textContent ?? `Column ${index + 1}`).trim();
+    select.append(option);
+  });
+  select.dataset.ready = "true";
+}
+
+function comparableFilterValue(value: string): number | string {
+  return sortableValue(value);
+}
+
+function applyMarkdownTableFilter(control: HTMLInputElement | HTMLSelectElement) {
+  const frame = control.closest(".markdownTableFrame");
+  const body = frame?.querySelector("table")?.tBodies.item(0);
+  const result = frame?.querySelector<HTMLOutputElement>(".markdownTableFilterResult");
+  if (!body) return;
+
+  const column = Number.parseInt(
+    frame?.querySelector<HTMLSelectElement>(".markdownTableFilterColumn")?.value ?? "-1",
+    10,
+  );
+  const operator = frame?.querySelector<HTMLSelectElement>(".markdownTableFilterOperator")?.value ?? "contains";
+  const query = frame?.querySelector<HTMLInputElement>(".markdownTableFilterInput")?.value.trim() ?? "";
+  const secondaryQuery = frame?.querySelector<HTMLInputElement>(".markdownTableFilterSecondary")?.value.trim() ?? "";
+  let visibleRows = 0;
+  Array.from(body.rows).forEach((row) => {
+    const cellText = column < 0
+      ? (row.textContent ?? "")
+      : (row.cells.item(column)?.textContent ?? "");
+    const normalizedCell = cellText.trim().toLocaleLowerCase();
+    const normalizedQuery = query.toLocaleLowerCase();
+    let matches = !query;
+    if (query) {
+      if (operator === "contains" || column < 0) {
+        matches = normalizedCell.includes(normalizedQuery);
+      } else if (operator === "equals") {
+        matches = normalizedCell === normalizedQuery;
+      } else {
+        const cellValue = comparableFilterValue(cellText);
+        const queryValue = comparableFilterValue(query);
+        const secondaryValue = comparableFilterValue(secondaryQuery);
+        if (typeof cellValue === "number" && typeof queryValue === "number") {
+          if (operator === "gte") matches = cellValue >= queryValue;
+          if (operator === "lte") matches = cellValue <= queryValue;
+          if (operator === "between" && typeof secondaryValue === "number") {
+            const lower = Math.min(queryValue, secondaryValue);
+            const upper = Math.max(queryValue, secondaryValue);
+            matches = cellValue >= lower && cellValue <= upper;
+          }
+        } else {
+          const comparableCell = String(cellValue);
+          const comparableQuery = String(queryValue);
+          if (operator === "gte") matches = comparableCell.localeCompare(comparableQuery, undefined, { numeric: true }) >= 0;
+          if (operator === "lte") matches = comparableCell.localeCompare(comparableQuery, undefined, { numeric: true }) <= 0;
+          if (operator === "between" && secondaryQuery) {
+            const comparableSecondary = String(secondaryValue);
+            const lower = [comparableQuery, comparableSecondary].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))[0];
+            const upper = lower === comparableQuery ? comparableSecondary : comparableQuery;
+            matches = comparableCell.localeCompare(lower, undefined, { numeric: true }) >= 0
+              && comparableCell.localeCompare(upper, undefined, { numeric: true }) <= 0;
+          }
+        }
+      }
+    }
+    row.hidden = !matches;
+    if (matches) visibleRows += 1;
+  });
+  if (result) result.textContent = `${visibleRows} of ${body.rows.length} rows`;
+}
+
+function filterMarkdownTable(event: FormEvent<HTMLInputElement | HTMLSelectElement>) {
+  const frame = event.currentTarget.closest(".markdownTableFrame");
+  const operator = frame?.querySelector<HTMLSelectElement>(".markdownTableFilterOperator")?.value;
+  frame?.classList.toggle("filterBetween", operator === "between");
+  applyMarkdownTableFilter(event.currentTarget);
+}
+
+function prepareMarkdownTableColumns(event: FormEvent<HTMLSelectElement>) {
+  populateMarkdownTableColumns(event.currentTarget);
+}
+
+function clearMarkdownTableFilter(event: ReactMouseEvent<HTMLButtonElement>) {
+  const frame = event.currentTarget.closest(".markdownTableFrame");
+  const input = frame?.querySelector<HTMLInputElement>(".markdownTableFilterInput");
+  const secondaryInput = frame?.querySelector<HTMLInputElement>(".markdownTableFilterSecondary");
+  const column = frame?.querySelector<HTMLSelectElement>(".markdownTableFilterColumn");
+  const operator = frame?.querySelector<HTMLSelectElement>(".markdownTableFilterOperator");
+  if (!frame || !input || !column || !operator) return;
+  input.value = "";
+  if (secondaryInput) secondaryInput.value = "";
+  column.value = "-1";
+  operator.value = "contains";
+  frame.classList.remove("filterBetween");
+  applyMarkdownTableFilter(input);
+  input.focus();
+}
+
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
@@ -175,18 +291,50 @@ const MessageItem = memo(function MessageItem({
   const isTerminalUser = !isAssistant && activeThreadSource === "hermes";
   const isRightAligned = isOwn || isTerminalUser;
   const authorName = isAssistant ? "Hermes · Agent" : (message.authorName || (isOwn ? userName : "Group member"));
+  const localTimestamp = localMessageTimestamp(message.createdAt);
 
   return (
     <article className={`message ${isAssistant ? "assistant" : isRightAligned ? "user" : "participant"} ${hasTable ? "hasTable" : ""}`}>
       <span className="messageAvatar">{isAssistant ? "H" : authorName.slice(0, 1).toUpperCase()}</span>
       <div className="messageBody">
-        <div className="messageMeta">{authorName}</div>
+        <div className="messageMeta">
+          <span>{authorName}</span>
+          {localTimestamp && <time dateTime={message.createdAt ?? undefined}>{localTimestamp}</time>}
+        </div>
         <div className={`messageContent ${isAssistant ? "markdown" : "plain"}`}>
           {isAssistant ? (
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
                 a: ({ children, ...props }) => <a {...props} target="_blank" rel="noreferrer noopener">{children}</a>,
+                table: ({ children, ...props }) => (
+                  <div className="markdownTableFrame">
+                    <div className="markdownTableToolbar">
+                      <select
+                        className="markdownTableFilterColumn"
+                        aria-label="Column to filter"
+                        defaultValue="-1"
+                        onFocus={prepareMarkdownTableColumns}
+                        onPointerDown={prepareMarkdownTableColumns}
+                        onChange={filterMarkdownTable}
+                      >
+                        <option value="-1">All columns</option>
+                      </select>
+                      <select className="markdownTableFilterOperator" aria-label="Filter operator" defaultValue="contains" onChange={filterMarkdownTable}>
+                        <option value="contains">Contains</option>
+                        <option value="equals">Equals</option>
+                        <option value="between">Between</option>
+                        <option value="gte">At least</option>
+                        <option value="lte">At most</option>
+                      </select>
+                      <input className="markdownTableFilterInput" type="search" aria-label="Filter value" placeholder="Value…" onInput={filterMarkdownTable} />
+                      <input className="markdownTableFilterSecondary" type="search" aria-label="Second filter value" placeholder="And…" onInput={filterMarkdownTable} />
+                      <output className="markdownTableFilterResult" aria-live="polite">All rows</output>
+                      <button className="markdownTableFilterClear" type="button" onClick={clearMarkdownTableFilter}>Clear</button>
+                    </div>
+                    <table {...props}>{children}</table>
+                  </div>
+                ),
                 th: ({ children, ...props }) => (
                   <th {...props}>
                     <button className="markdownSortButton" type="button" onClick={sortMarkdownTable} title="Sort this column">
@@ -703,7 +851,7 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
     followBottomRef.current = true;
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(), role: "user", content: message,
-      isCurrentUser: true, authorName: userName,
+      isCurrentUser: true, authorName: userName, createdAt: new Date().toISOString(),
     };
     const conversation = [...messages, userMessage];
     setMessages(conversation);
@@ -774,7 +922,10 @@ export function ChatClient({ account, userName }: { account: ReactNode; userName
           assistantAdded = true;
           setIsReceiving(true);
           setStreamingMessageId(assistantId);
-          setMessages((current) => [...current, { id: assistantId, role: "assistant", content: token }]);
+          setMessages((current) => [...current, {
+            id: assistantId, role: "assistant", content: token,
+            createdAt: new Date().toISOString(),
+          }]);
         } else {
           setMessages((current) => current.map((item) => item.id === assistantId
             ? { ...item, content: item.content + token }
