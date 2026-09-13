@@ -54,6 +54,9 @@ services:
       HERMES_API_SERVER_KEY: ${HERMES_API_SERVER_KEY:?Run configure-phase1.ps1 first}
       HERMES_WORK_API_SERVER_KEY: ${HERMES_WORK_API_SERVER_KEY:?Configure the Work Hermes profile}
       HERMES_MODEL: hermes-agent
+      HERMES_DASHBOARD_INTERNAL_URL: http://hermes:9119
+      HERMES_DASHBOARD_BASIC_AUTH_USERNAME: ${HERMES_DASHBOARD_BASIC_AUTH_USERNAME:?Run configure-phase1.ps1 first}
+      HERMES_DASHBOARD_BASIC_AUTH_PASSWORD: ${HERMES_DASHBOARD_BASIC_AUTH_PASSWORD:?Run configure-phase1.ps1 first}
     depends_on:
       hermes:
         condition: service_healthy

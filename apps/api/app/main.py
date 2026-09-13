@@ -32,6 +32,11 @@ from app.coordination import (
     SessionQueueTimeoutError,
     session_turn_coordinator,
 )
+from app.connections import (
+    link_telegram_identity,
+    list_telegram_connections,
+    unlink_telegram_identity,
+)
 from app.identity import (
     OidcTokenVerifier,
     ZitadelProvisioningError,
@@ -43,6 +48,7 @@ from app.identity import (
     set_user_theme,
     synchronize_user,
 )
+from app.telegram import HermesTelegramPairingClient, TelegramPairingError
 
 
 app = FastAPI(title="Skavan Agents API", version="0.1.0")
@@ -142,6 +148,35 @@ class StoredChatMessage(BaseModel):
     author_name: str | None = None
 
 
+def utc_iso_timestamp(value: object) -> str:
+    """Normalize PostgreSQL and Hermes timestamps to canonical UTC ISO-8601."""
+    parsed: datetime
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, (int, float)) and not isinstance(value, bool):
+        seconds = float(value)
+        if abs(seconds) >= 1_000_000_000_000:
+            seconds /= 1000
+        try:
+            parsed = datetime.fromtimestamp(seconds, tz=timezone.utc)
+        except (OverflowError, OSError, ValueError):
+            return ""
+    elif isinstance(value, str) and value.strip():
+        normalized = value.strip()
+        try:
+            return utc_iso_timestamp(float(normalized))
+        except ValueError:
+            try:
+                parsed = datetime.fromisoformat(normalized.replace("Z", "+00:00"))
+            except ValueError:
+                return ""
+    else:
+        return ""
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 class ChatThread(BaseModel):
     id: str
     title: str
@@ -185,6 +220,19 @@ class RegistrationProfilesRequest(BaseModel):
 class RegistrationProfilesResponse(BaseModel):
     roles: list[str]
     refresh_login: bool = True
+
+
+class TelegramLinkRequest(BaseModel):
+    profile: Literal["personal", "work"]
+    code: str = Field(min_length=8, max_length=8, pattern=r"^[A-Za-z0-9]{8}$")
+
+
+class TelegramConnection(BaseModel):
+    provider: Literal["telegram"] = "telegram"
+    external_subject: str
+    username: str | None = None
+    profile: Literal["personal", "work"]
+    linked_at: datetime | None = None
 
 
 def require_platform_user_id(value: str | None) -> UUID:
@@ -279,6 +327,77 @@ def get_hermes_adapter() -> HermesAdapter:
 
 def get_session_turn_coordinator() -> InProcessSessionTurnCoordinator:
     return session_turn_coordinator
+
+
+def get_telegram_pairing_client() -> HermesTelegramPairingClient:
+    return HermesTelegramPairingClient.from_environment()
+
+
+@app.get(
+    "/api/connections/telegram", response_model=list[TelegramConnection],
+    response_model_exclude_none=True, tags=["connections"],
+)
+async def telegram_connections(
+    x_skavan_user_id: str | None = Header(default=None),
+    session: AsyncSession = Depends(get_database_session),
+) -> list[TelegramConnection]:
+    user_id = require_platform_user_id(x_skavan_user_id)
+    return [
+        TelegramConnection.model_validate(item)
+        for item in await list_telegram_connections(session, user_id)
+    ]
+
+
+@app.post(
+    "/api/connections/telegram", response_model=TelegramConnection,
+    response_model_exclude_none=True, tags=["connections"],
+)
+async def connect_telegram(
+    request: TelegramLinkRequest,
+    x_skavan_user_id: str | None = Header(default=None),
+    session: AsyncSession = Depends(get_database_session),
+    pairing: HermesTelegramPairingClient = Depends(get_telegram_pairing_client),
+) -> TelegramConnection:
+    user_id = require_platform_user_id(x_skavan_user_id)
+    await require_profile_access(session, user_id, request.profile)
+    try:
+        approved = await pairing.approve(request.code, profile=request.profile)
+        linked = await link_telegram_identity(
+            session, user_id,
+            external_subject=approved["external_subject"],
+            username=approved["username"], profile=request.profile,
+        )
+    except TelegramPairingError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        # Undo the Hermes grant if PostgreSQL rejects ownership of the identity.
+        with suppress(TelegramPairingError):
+            await pairing.revoke(approved["external_subject"], profile=request.profile)
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return TelegramConnection.model_validate(linked)
+
+
+@app.delete(
+    "/api/connections/telegram/{profile}", status_code=204,
+    tags=["connections"],
+)
+async def disconnect_telegram(
+    profile: Literal["personal", "work"],
+    x_skavan_user_id: str | None = Header(default=None),
+    session: AsyncSession = Depends(get_database_session),
+    pairing: HermesTelegramPairingClient = Depends(get_telegram_pairing_client),
+) -> Response:
+    user_id = require_platform_user_id(x_skavan_user_id)
+    current = await list_telegram_connections(session, user_id)
+    connection = next((item for item in current if item["profile"] == profile), None)
+    if connection is None:
+        raise HTTPException(status_code=404, detail="Telegram connection not found")
+    try:
+        await pairing.revoke(connection["external_subject"], profile=profile)
+    except TelegramPairingError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    await unlink_telegram_identity(session, user_id, profile=profile)
+    return Response(status_code=204)
 
 
 @app.get("/api/chat/profiles", response_model=list[ChatProfile], tags=["chat"])
@@ -437,7 +556,7 @@ async def chat_history(
     return [
         StoredChatMessage(
             id=item["id"], role=item["role"], content=item["content"],
-            created_at=item["created_at"].isoformat(),
+            created_at=utc_iso_timestamp(item["created_at"]),
             is_current_user=item.get("author_user_id") == str(user_id),
             author_name=item.get("author_name"),
         )
@@ -477,7 +596,7 @@ def normalize_hermes_history(
             id=str(raw_id) if raw_id is not None else f"{session_id}:{index}",
             role=role,
             content=content,
-            created_at=str(timestamp) if timestamp is not None else "",
+            created_at=utc_iso_timestamp(timestamp),
             is_current_user=author_user_id == str(user_id),
             author_name=(
                 str(author_name) if author_name

@@ -10,7 +10,7 @@ FROM information_schema.tables
 WHERE table_schema = 'public'
   AND table_name IN (
     'users', 'identity_accounts', 'groups', 'group_memberships', 'threads',
-    'messages', 'group_memories', 'channel_identities',
+    'messages', 'group_memories', 'channel_identities', 'channel_identity_profiles',
     'hermes_profile_bindings', 'capability_permissions',
     'approval_requests', 'audit_events'
   )

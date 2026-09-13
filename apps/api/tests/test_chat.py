@@ -553,6 +553,13 @@ def test_profile_member_can_rename_shared_postgres_chat(monkeypatch) -> None:
     }
 
 
+def test_hermes_timestamps_are_normalized_to_utc_iso_format() -> None:
+    assert main.utc_iso_timestamp(1.0) == "1970-01-01T00:00:01Z"
+    assert main.utc_iso_timestamp(1_000.0) == "1970-01-01T00:16:40Z"
+    assert main.utc_iso_timestamp("2026-08-27T12:30:00+10:00") == "2026-08-27T02:30:00Z"
+    assert main.utc_iso_timestamp(None) == ""
+
+
 def test_bound_chat_history_includes_messages_added_from_terminal(monkeypatch) -> None:
     configure_conversation_fakes(monkeypatch)
 
