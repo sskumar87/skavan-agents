@@ -8,9 +8,9 @@ ADR before implementation.
 
 ## Current Phase 1 objective
 
-Provide a stable, responsive multi-user web client for the Personal and Work
-Hermes profiles, with authentication, saved user preferences and conversations
-that can be continued from both Skavan and Hermes Web.
+Provide a stable, responsive multi-user client for the Personal and Work Hermes
+profiles, with authentication, saved user preferences, unified conversations
+and a controlled Telegram pilot using canonical product identities.
 
 ## Completed and deployed
 
@@ -31,6 +31,7 @@ that can be continued from both Skavan and Hermes Web.
 | Default profile preference | Users with two profiles can save the profile that opens by default on mobile, tablet and desktop. Single-profile users enter their only authorized profile automatically. |
 | Revoked default handling | If an administrator revokes the saved default profile, Skavan selects and persists an authorized fallback; chat is disabled if no profile remains. |
 | Responsive chat experience | Sticky composer/navigation, scroll controls, dynamic multiline input, content-sized bubbles, right-aligned user messages, Markdown/GFM rendering and responsive long-title headers are deployed. |
+| Universal Markdown table controls | Every agent-generated Markdown table has viewport-contained scrolling, sortable columns and column-aware filters (`contains`, `equals`, `between`, `at least`, `at most`) with visible-result counts on mobile, tablet and desktop. |
 | Chat input behavior | Enter creates a newline, Send submits explicitly, and Ctrl+Enter submits on desktop. |
 | Streaming resilience | The UI shows active streaming state; API SSE heartbeats prevent idle Cloudflare/mobile disconnects during long Hermes tool operations. |
 | Chat management | Search, latest-activity ordering, PostgreSQL chat rename/archive controls and Hermes session discovery are available. |
@@ -46,6 +47,9 @@ that can be continued from both Skavan and Hermes Web.
 | Live cross-client transcript refresh | Open Skavan chats poll their canonical Hermes transcript every five seconds while visible and refresh immediately when the browser tab regains focus. Identical transcripts do not trigger a React update. |
 | Platform session writer guard | The single FastAPI instance serializes Skavan turns per profile/session, allows one bounded pending turn, reports queued state and applies bounded Hermes 429 backoff. The direct Hermes terminal boundary is recorded in ADR-016. |
 | Hermes runtime event UX | Safe tool start/completion/failure and interruption events are normalized by the backend without exposing tool arguments; the UI displays current progress during long runs. |
+| Work profile API credential alignment | The Work profile retains its profile-scoped API key while its standalone listener remains disabled under the multiplex gateway. A repeatable synchronization script aligns the Work runtime key with the backend credential; Work session listing and chat completion both return HTTP 200 after restart. |
+| Hermes channel recovery | Removed the stale `WHATSAPP_ENABLED=true` environment override that reactivated the deferred WhatsApp bridge and destabilized the shared gateway. Hermes, the Work Sessions API and Work Telegram were verified healthy/connected after restart. |
+| Localized message timestamps | PostgreSQL and Hermes message timestamps are normalized by the API to UTC ISO-8601. The web client renders each timestamp using the browser's locale and timezone, including optimistic user and streaming-agent messages. |
 
 ## P0 — complete for the current deployment
 
@@ -61,6 +65,8 @@ coordination outside Skavan is explicitly parked as a non-blocking extension.
 | Shared-memory acceptance | Prove Personal and Work memory isolation and same-profile sharing using explicit test facts. |
 | Off-host recovery | Select encrypted off-host backup storage, key custody, retention, alerts and recovery objectives; perform a documented restore rehearsal. |
 | Deployment documentation | Update the clean-machine runbook with the pinned Docker executable discovery, current Compose command, profile bootstrap and post-deployment acceptance checks. |
+| Telegram pilot activation | Apply revision `20260826_0003`, configure one profile-scoped bot in Hermes, add Connections UI, automate revoked-role reconciliation and complete the pilot acceptance checks. |
+| Hermes unhealthy self-recovery | Add an external watchdog or supported supervisor policy that restarts the gateway when its API listener fails while the dashboard container remains alive; alert after bounded restart attempts. |
 
 ## P3 — non-blocking extensions
 
@@ -71,7 +77,7 @@ coordination outside Skavan is explicitly parked as a non-blocking extension.
 | Safe `/commands` support | Start with read-only help, session list/status/title and profile information. Keep terminal, filesystem, credentials, config mutation, cron and administration unavailable to normal users. |
 | Optional OmniRoute provider | Evaluate provider compatibility, routing, cost, failover and secret handling behind the Hermes adapter. |
 | Mechanical action ledger | A reviewed best-effort observer hook may record tools, but it does not replace authorization or turn coordination. |
-| Messaging channels | Add Telegram and WhatsApp only after web/session identity is stable. |
+| WhatsApp and additional channels | Reuse the Telegram canonical identity/profile-grant contract after the Telegram pilot is accepted. |
 | Mobile and voice | Reuse the same backend, profile authorization and session coordinator contracts. |
 
 ## Decisions required
@@ -86,8 +92,7 @@ coordination outside Skavan is explicitly parked as a non-blocking extension.
 - No user-level chat isolation within a Personal or Work profile.
 - No Redis or Kubernetes dependency.
 - No public Hermes API or Hermes API key in the browser.
-- No voice, native mobile app, Telegram or WhatsApp until the web session model
-  is stable.
+- No voice, native mobile app or WhatsApp in the current pilot.
 
 ## Task-capture rule
 
